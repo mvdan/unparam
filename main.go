@@ -34,10 +34,13 @@ func isExported(name string) bool {
 }
 
 func unusedParams(w io.Writer, args ...string) error {
+	wd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
 	paths := gotool.ImportPaths(args)
 	var conf loader.Config
-	_, err := conf.FromArgs(paths, false)
-	if err != nil {
+	if _, err := conf.FromArgs(paths, false); err != nil {
 		return err
 	}
 	iprog, err := conf.Load()
@@ -96,7 +99,11 @@ func unusedParams(w io.Writer, args ...string) error {
 				continue
 			}
 			pos := prog.Fset.Position(param.Pos())
-			fmt.Fprintf(w, "%v: %s is unused\n", pos, param.Name())
+			line := pos.String()
+			if strings.HasPrefix(line, wd) {
+				line = line[len(wd)+1:]
+			}
+			fmt.Fprintf(w, "%s: %s is unused\n", line, param.Name())
 		}
 	}
 	return nil

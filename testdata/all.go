@@ -33,6 +33,10 @@ func DummyImpl(f FooType) {}
 
 func PanicImpl(f FooType) { panic("dummy") }
 
+func throw(v ...interface{}) {}
+
+func ThrowImpl(f FooType) { throw("dummy") }
+
 type BarFunc func(a FooType, s string) int
 
 func BarImpl(a FooType, s string) int {

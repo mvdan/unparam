@@ -121,8 +121,13 @@ func unusedParams(w io.Writer, args ...string) error {
 // MakeInterface.
 func willPanic(blk *ssa.BasicBlock) bool {
 	for _, instr := range blk.Instrs {
-		if _, ok := instr.(*ssa.Panic); ok {
+		switch x := instr.(type) {
+		case *ssa.Panic:
 			return true
+		case *ssa.Call:
+			if x.Call.Value.Name() == "throw" { // runtime's panic
+				return true
+			}
 		}
 	}
 	return false

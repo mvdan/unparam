@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"go/types"
+	"io"
 	"os"
 	"strings"
 	"unicode"
@@ -19,7 +20,7 @@ import (
 
 func main() {
 	flag.Parse()
-	if err := unusedParams(flag.Args()); err != nil {
+	if err := unusedParams(os.Stdout, flag.Args()...); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
@@ -32,7 +33,7 @@ func isExported(name string) bool {
 	return false
 }
 
-func unusedParams(args []string) error {
+func unusedParams(w io.Writer, args ...string) error {
 	paths := gotool.ImportPaths(args)
 	var conf loader.Config
 	_, err := conf.FromArgs(paths, false)
@@ -95,7 +96,7 @@ func unusedParams(args []string) error {
 				continue
 			}
 			pos := prog.Fset.Position(param.Pos())
-			fmt.Printf("%v: %s is unused\n", pos, param.Name())
+			fmt.Fprintf(w, "%v: %s is unused\n", pos, param.Name())
 		}
 	}
 	return nil

@@ -38,3 +38,9 @@ func BarImpl(a FooType, s string) int { return int(a) }
 func NoName(FooType) { println("foo") }
 
 func UnderscoreName(_ FooType) { println("foo") }
+
+type BarStruct struct {
+	fn func(a FooType, b byte)
+}
+
+func barField(a FooType, b byte) { println(a) }

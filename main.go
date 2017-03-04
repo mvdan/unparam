@@ -61,6 +61,14 @@ func unusedParams(w io.Writer, args ...string) error {
 				continue
 			}
 			switch x := member.Type().Underlying().(type) {
+			case *types.Struct:
+				for i := 0; i < x.NumFields(); i++ {
+					f := x.Field(i)
+					sign, ok := f.Type().(*types.Signature)
+					if ok {
+						addSign(sign)
+					}
+				}
 			case *types.Interface:
 				for i := 0; i < x.NumMethods(); i++ {
 					m := x.Method(i)

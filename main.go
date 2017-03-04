@@ -10,7 +10,6 @@ import (
 	"io"
 	"os"
 	"strings"
-	"unicode"
 
 	"golang.org/x/tools/go/loader"
 	"golang.org/x/tools/go/ssa/ssautil"
@@ -24,13 +23,6 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-}
-
-func isExported(name string) bool {
-	for _, r := range name {
-		return unicode.IsUpper(r)
-	}
-	return false
 }
 
 func unusedParams(w io.Writer, args ...string) error {
@@ -57,9 +49,6 @@ func unusedParams(w io.Writer, args ...string) error {
 	ifaceFuncs := make(map[string]bool)
 	for _, pkg := range prog.AllPackages() {
 		for _, member := range pkg.Members {
-			if !isExported(member.Name()) {
-				continue
-			}
 			under := member.Type().Underlying()
 			iface, ok := under.(*types.Interface)
 			if !ok {

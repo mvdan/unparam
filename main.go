@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"golang.org/x/tools/go/loader"
+	"golang.org/x/tools/go/ssa"
 	"golang.org/x/tools/go/ssa/ssautil"
 
 	"github.com/kisielk/gotool"
@@ -69,7 +70,7 @@ func unusedParams(w io.Writer, args ...string) error {
 		if fn.Pkg == nil { // builtin?
 			continue
 		}
-		if fn.Blocks == nil { // stub
+		if len(fn.Blocks) == 0 { // stub
 			continue
 		}
 		info := pkgInfos[fn.Pkg.Pkg]
@@ -78,6 +79,11 @@ func unusedParams(w io.Writer, args ...string) error {
 		}
 		sign := fn.Signature
 		if ifaceFuncs[signString(sign)] { // could implement iface
+			continue
+		}
+		blk := fn.Blocks[0]
+		if ret, ok := blk.Instrs[0].(*ssa.Return); ok &&
+			len(ret.Results) == 0 { // dummy implementation
 			continue
 		}
 		for i, param := range fn.Params {

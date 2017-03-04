@@ -6,6 +6,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"go/token"
 	"go/types"
 	"io"
 	"os"
@@ -48,20 +49,25 @@ func unusedParams(w io.Writer, args ...string) error {
 	prog.Build()
 
 	ifaceFuncs := make(map[string]bool)
+	addSign := func(sign *types.Signature) {
+		if sign.Params().Len() == 0 {
+			return
+		}
+		ifaceFuncs[signString(sign)] = true
+	}
 	for _, pkg := range prog.AllPackages() {
 		for _, member := range pkg.Members {
-			under := member.Type().Underlying()
-			iface, ok := under.(*types.Interface)
-			if !ok {
+			if member.Token() != token.TYPE {
 				continue
 			}
-			for i := 0; i < iface.NumMethods(); i++ {
-				m := iface.Method(i)
-				sign := m.Type().(*types.Signature)
-				if sign.Params().Len() == 0 {
-					continue
+			switch x := member.Type().Underlying().(type) {
+			case *types.Interface:
+				for i := 0; i < x.NumMethods(); i++ {
+					m := x.Method(i)
+					addSign(m.Type().(*types.Signature))
 				}
-				ifaceFuncs[signString(sign)] = true
+			case *types.Signature:
+				addSign(x)
 			}
 		}
 	}

@@ -32,3 +32,9 @@ func (f FooType) AllUsed(a, b FooType) FooType {
 func DummyImpl(f FooType) {}
 
 func PanicImpl(f FooType) { panic("dummy") }
+
+type barFunc func(a FooType, s string) int
+
+func barImpl(a FooType, s string) int {
+	return int(a)
+}

@@ -34,19 +34,31 @@ func unusedParams(args []string) error {
 	if err != nil {
 		return err
 	}
-	pkgs := make(map[*types.Package]bool)
+	pkgInfos := make(map[*types.Package]*types.Info)
 	for _, pinfo := range iprog.InitialPackages() {
-		pkgs[pinfo.Pkg] = true
+		pkgInfos[pinfo.Pkg] = &pinfo.Info
 	}
-
 	prog := ssautil.CreateProgram(iprog, 0)
-
 	prog.Build()
+
 	for fn := range ssautil.AllFunctions(prog) {
-		if fn.Pkg == nil || !pkgs[fn.Pkg.Pkg] {
+		if fn.Pkg == nil { // builtin?
 			continue
 		}
-		fmt.Println(fn)
+		if fn.Blocks == nil { // stub
+			continue
+		}
+		info := pkgInfos[fn.Pkg.Pkg]
+		if info == nil { // not part of given pkgs
+			continue
+		}
+		for _, param := range fn.Params {
+			if len(*param.Referrers()) > 0 {
+				continue
+			}
+			pos := prog.Fset.Position(param.Pos())
+			fmt.Printf("%v: %s is unused\n", pos, param.Name())
+		}
 	}
 	return nil
 }

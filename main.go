@@ -86,6 +86,9 @@ func unusedParams(w io.Writer, args ...string) error {
 			len(ret.Results) == 0 { // dummy implementation
 			continue
 		}
+		if willPanic(blk) { // panic implementation
+			continue
+		}
 		for i, param := range fn.Params {
 			if i == 0 && sign.Recv() != nil { // receiver, not param
 				continue
@@ -102,6 +105,18 @@ func unusedParams(w io.Writer, args ...string) error {
 		}
 	}
 	return nil
+}
+
+// willPanic reports whether a block will just panic. We can't simply
+// use the first instruction as there might be others before it, like
+// MakeInterface.
+func willPanic(blk *ssa.BasicBlock) bool {
+	for _, instr := range blk.Instrs {
+		if _, ok := instr.(*ssa.Panic); ok {
+			return true
+		}
+	}
+	return false
 }
 
 func tupleStrs(t *types.Tuple) []string {

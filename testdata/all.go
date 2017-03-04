@@ -30,3 +30,5 @@ func (f FooType) AllUsed(a, b FooType) FooType {
 }
 
 func DummyImpl(f FooType) {}
+
+func PanicImpl(f FooType) { panic("dummy") }

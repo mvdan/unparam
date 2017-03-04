@@ -33,8 +33,12 @@ func DummyImpl(f FooType) {}
 
 func PanicImpl(f FooType) { panic("dummy") }
 
-type barFunc func(a FooType, s string) int
+type BarFunc func(a FooType, s string) int
 
-func barImpl(a FooType, s string) int {
+func BarImpl(a FooType, s string) int {
 	return int(a)
+}
+
+func NoName(FooType) {
+	println("foo")
 }

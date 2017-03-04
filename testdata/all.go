@@ -4,13 +4,9 @@ import "net/http"
 
 type FooType int
 
-func AllUsed(a, b FooType) FooType {
-	return a + b
-}
+func AllUsed(a, b FooType) FooType { return a + b }
 
-func OneUnused(a, b FooType) FooType {
-	return a
-}
+func OneUnused(a, b FooType) FooType { return a }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("hi"))
@@ -25,9 +21,7 @@ func FooImpl(w http.ResponseWriter, code FooType) error {
 	return nil
 }
 
-func (f FooType) AllUsed(a, b FooType) FooType {
-	return a + b
-}
+func (f FooType) AllUsed(a, b FooType) FooType { return a + b }
 
 func DummyImpl(f FooType) {}
 
@@ -39,10 +33,8 @@ func ThrowImpl(f FooType) { throw("dummy") }
 
 type BarFunc func(a FooType, s string) int
 
-func BarImpl(a FooType, s string) int {
-	return int(a)
-}
+func BarImpl(a FooType, s string) int { return int(a) }
 
-func NoName(FooType) {
-	println("foo")
-}
+func NoName(FooType) { println("foo") }
+
+func UnderscoreName(_ FooType) { println("foo") }

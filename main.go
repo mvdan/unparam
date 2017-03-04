@@ -99,7 +99,8 @@ func unusedParams(w io.Writer, args ...string) error {
 			if i == 0 && sign.Recv() != nil { // receiver, not param
 				continue
 			}
-			if param.Object().Name() == "" { // unnamed
+			switch param.Object().Name() {
+			case "", "_": // unnamed
 				continue
 			}
 			if len(*param.Referrers()) > 0 { // used

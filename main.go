@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"go/types"
 	"os"
+	"strings"
+	"unicode"
 
 	"golang.org/x/tools/go/loader"
 	"golang.org/x/tools/go/ssa/ssautil"
@@ -21,6 +23,13 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+}
+
+func isExported(name string) bool {
+	for _, r := range name {
+		return unicode.IsUpper(r)
+	}
+	return false
 }
 
 func unusedParams(args []string) error {
@@ -41,6 +50,28 @@ func unusedParams(args []string) error {
 	prog := ssautil.CreateProgram(iprog, 0)
 	prog.Build()
 
+	ifaceFuncs := make(map[string]bool)
+	for _, pkg := range prog.AllPackages() {
+		for _, member := range pkg.Members {
+			if !isExported(member.Name()) {
+				continue
+			}
+			under := member.Type().Underlying()
+			iface, ok := under.(*types.Interface)
+			if !ok {
+				continue
+			}
+			for i := 0; i < iface.NumMethods(); i++ {
+				m := iface.Method(i)
+				sign := m.Type().(*types.Signature)
+				if sign.Params().Len() == 0 {
+					continue
+				}
+				ifaceFuncs[signString(sign)] = true
+			}
+		}
+	}
+
 	for fn := range ssautil.AllFunctions(prog) {
 		if fn.Pkg == nil { // builtin?
 			continue
@@ -52,7 +83,14 @@ func unusedParams(args []string) error {
 		if info == nil { // not part of given pkgs
 			continue
 		}
-		for _, param := range fn.Params {
+		sign := fn.Signature
+		if ifaceFuncs[signString(sign)] { // could implement iface
+			continue
+		}
+		for i, param := range fn.Params {
+			if i == 0 && sign.Recv() != nil { // receiver, not param
+				continue
+			}
 			if len(*param.Referrers()) > 0 {
 				continue
 			}
@@ -61,4 +99,20 @@ func unusedParams(args []string) error {
 		}
 	}
 	return nil
+}
+
+func tupleStrs(t *types.Tuple) []string {
+	l := make([]string, t.Len())
+	for i := 0; i < t.Len(); i++ {
+		l[i] = t.At(i).Type().String()
+	}
+	return l
+}
+
+// signString is similar to Signature.String(), but it ignores
+// param/result names.
+func signString(sign *types.Signature) string {
+	return fmt.Sprintf("(%s) (%s)",
+		strings.Join(tupleStrs(sign.Params()), ", "),
+		strings.Join(tupleStrs(sign.Results()), ", "))
 }

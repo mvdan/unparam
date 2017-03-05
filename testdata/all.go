@@ -27,6 +27,13 @@ func DummyImpl(f FooType) {}
 
 func PanicImpl(f FooType) { panic("dummy") }
 
+func NonPanicImpl(w http.ResponseWriter, f FooType) {
+	for i := 0; i < 10; i++ {
+		w.Write([]byte("foo"))
+	}
+	panic("dummy")
+}
+
 func throw(v ...interface{}) {}
 
 func ThrowImpl(f FooType) { throw("dummy") }

@@ -1,1 +1,2 @@
+testdata/all.go:30:42: f is unused
 testdata/all.go:9:19: b is unused

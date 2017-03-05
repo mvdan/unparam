@@ -150,12 +150,17 @@ func unusedParams(args ...string) ([]string, error) {
 func willPanic(blk *ssa.BasicBlock) bool {
 	for _, instr := range blk.Instrs {
 		switch x := instr.(type) {
+		case *ssa.Alloc, *ssa.Store, *ssa.MakeInterface,
+			*ssa.IndexAddr, *ssa.Slice:
+			// allow these for e.g. complex throw calls
 		case *ssa.Panic:
 			return true
 		case *ssa.Call:
 			if x.Call.Value.Name() == "throw" { // runtime's panic
 				return true
 			}
+		default:
+			return false
 		}
 	}
 	return false

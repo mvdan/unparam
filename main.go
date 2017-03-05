@@ -112,12 +112,7 @@ func unusedParams(args ...string) ([]string, error) {
 		if ifaceFuncs[signString(sign)] { // could implement iface
 			continue
 		}
-		blk := fn.Blocks[0]
-		if ret, ok := blk.Instrs[0].(*ssa.Return); ok &&
-			len(ret.Results) == 0 { // dummy implementation
-			continue
-		}
-		if willPanic(blk) { // panic implementation
+		if dummyImpl(fn.Blocks[0]) { // panic implementation
 			continue
 		}
 		for i, param := range fn.Params {
@@ -144,15 +139,17 @@ func unusedParams(args ...string) ([]string, error) {
 	return warns, nil
 }
 
-// willPanic reports whether a block will just panic. We can't simply
-// use the first instruction as there might be others before it, like
-// MakeInterface.
-func willPanic(blk *ssa.BasicBlock) bool {
+// dummyImpl reports whether a block is a dummy implementation. This is
+// true if the block will almost immediately panic, throw or return
+// nothing.
+func dummyImpl(blk *ssa.BasicBlock) bool {
 	for _, instr := range blk.Instrs {
 		switch x := instr.(type) {
 		case *ssa.Alloc, *ssa.Store, *ssa.MakeInterface,
 			*ssa.IndexAddr, *ssa.Slice:
 			// allow these for e.g. complex throw calls
+		case *ssa.Return:
+			return len(x.Results) == 0
 		case *ssa.Panic:
 			return true
 		case *ssa.Call:

@@ -31,7 +31,18 @@ func NonPanicImpl(w http.ResponseWriter, f FooType) {
 	for i := 0; i < 10; i++ {
 		w.Write([]byte("foo"))
 	}
-	panic("dummy")
+	panic("default")
+}
+
+func endlessLoop(w http.ResponseWriter) {
+	for {
+		w.Write([]byte("foo"))
+	}
+}
+
+func NonPanicImpl2(w http.ResponseWriter, f FooType) {
+	endlessLoop(w)
+	panic("unreachable")
 }
 
 func throw(v ...interface{}) {}

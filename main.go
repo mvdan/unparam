@@ -163,9 +163,7 @@ func dummyImpl(blk *ssa.BasicBlock) bool {
 		case *ssa.Panic:
 			return true
 		case *ssa.Call:
-			if x.Call.Value.Name() == "throw" { // runtime's panic
-				return true
-			}
+			return x.Call.Value.Name() == "throw" // runtime's panic
 		default:
 			return false
 		}

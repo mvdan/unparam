@@ -61,7 +61,19 @@ func unusedParams(args ...string) ([]string, error) {
 	}
 	for _, pkg := range prog.AllPackages() {
 		for _, member := range pkg.Members {
-			if member.Token() != token.TYPE {
+			switch member.Token() {
+			case token.FUNC:
+				params := member.Type().(*types.Signature).Params()
+				for i := 0; i < params.Len(); i++ {
+					p := params.At(i)
+					sign, ok := p.Type().(*types.Signature)
+					if ok {
+						addSign(sign)
+					}
+				}
+				continue
+			case token.TYPE:
+			default:
 				continue
 			}
 			switch x := member.Type().Underlying().(type) {

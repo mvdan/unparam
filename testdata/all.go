@@ -44,3 +44,7 @@ type BarStruct struct {
 }
 
 func BarField(a FooType, b byte) { println(a) }
+
+func FuncAsParameter(fn func(FooType) string) { fn(0) }
+
+func PassedAsParam(f FooType) string { return "foo" }

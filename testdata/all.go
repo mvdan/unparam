@@ -43,4 +43,4 @@ type BarStruct struct {
 	fn func(a FooType, b byte)
 }
 
-func barField(a FooType, b byte) { println(a) }
+func BarField(a FooType, b byte) { println(a) }

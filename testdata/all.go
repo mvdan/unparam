@@ -38,6 +38,8 @@ func throw(v ...interface{}) {}
 
 func ThrowImpl(f FooType) { throw("dummy") }
 
+func ZeroImpl(f FooType) (int, string, []byte) { return 0, "", nil }
+
 type BarFunc func(a FooType, s string) int
 
 func BarImpl(a FooType, s string) int { return int(a) }

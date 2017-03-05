@@ -141,7 +141,7 @@ func unusedParams(args ...string) ([]string, error) {
 
 // dummyImpl reports whether a block is a dummy implementation. This is
 // true if the block will almost immediately panic, throw or return
-// nothing.
+// constants only.
 func dummyImpl(blk *ssa.BasicBlock) bool {
 	for _, instr := range blk.Instrs {
 		switch x := instr.(type) {
@@ -149,7 +149,12 @@ func dummyImpl(blk *ssa.BasicBlock) bool {
 			*ssa.IndexAddr, *ssa.Slice:
 			// allow these for e.g. complex throw calls
 		case *ssa.Return:
-			return len(x.Results) == 0
+			for _, val := range x.Results {
+				if _, ok := val.(*ssa.Const); !ok {
+					return false
+				}
+			}
+			return true
 		case *ssa.Panic:
 			return true
 		case *ssa.Call:

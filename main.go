@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"go/token"
 	"go/types"
-	"io"
 	"os"
+	"sort"
 	"strings"
 
 	"golang.org/x/tools/go/loader"
@@ -21,25 +21,29 @@ import (
 
 func main() {
 	flag.Parse()
-	if err := unusedParams(os.Stdout, flag.Args()...); err != nil {
+	warns, err := unusedParams(flag.Args()...)
+	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+	for _, warn := range warns {
+		fmt.Println(warn)
+	}
 }
 
-func unusedParams(w io.Writer, args ...string) error {
+func unusedParams(args ...string) ([]string, error) {
 	wd, err := os.Getwd()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	paths := gotool.ImportPaths(args)
 	var conf loader.Config
 	if _, err := conf.FromArgs(paths, false); err != nil {
-		return err
+		return nil, err
 	}
 	iprog, err := conf.Load()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	pkgInfos := make(map[*types.Package]*types.Info)
 	for _, pinfo := range iprog.InitialPackages() {
@@ -80,6 +84,7 @@ func unusedParams(w io.Writer, args ...string) error {
 		}
 	}
 
+	var warns []string
 	for fn := range ssautil.AllFunctions(prog) {
 		if fn.Pkg == nil { // builtin?
 			continue
@@ -119,10 +124,12 @@ func unusedParams(w io.Writer, args ...string) error {
 			if strings.HasPrefix(line, wd) {
 				line = line[len(wd)+1:]
 			}
-			fmt.Fprintf(w, "%s: %s is unused\n", line, param.Name())
+			warns = append(warns, fmt.Sprintf("%s: %s is unused",
+				line, param.Name()))
 		}
 	}
-	return nil
+	sort.Strings(warns)
+	return warns, nil
 }
 
 // willPanic reports whether a block will just panic. We can't simply

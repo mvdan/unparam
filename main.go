@@ -96,7 +96,7 @@ func unusedParams(args ...string) ([]string, error) {
 		}
 	}
 
-	var warns []string
+	var unused []*ssa.Parameter
 	for fn := range ssautil.AllFunctions(prog) {
 		if fn.Pkg == nil { // builtin?
 			continue
@@ -126,16 +126,21 @@ func unusedParams(args ...string) ([]string, error) {
 			if len(*param.Referrers()) > 0 { // used
 				continue
 			}
-			pos := prog.Fset.Position(param.Pos())
-			line := pos.String()
-			if strings.HasPrefix(line, wd) {
-				line = line[len(wd)+1:]
-			}
-			warns = append(warns, fmt.Sprintf("%s: %s is unused",
-				line, param.Name()))
+			unused = append(unused, param)
 		}
 	}
-	sort.Strings(warns)
+	sort.Slice(unused, func(i, j int) bool {
+		return unused[i].Pos() < unused[j].Pos()
+	})
+	warns := make([]string, len(unused))
+	for i, param := range unused {
+		pos := prog.Fset.Position(param.Pos())
+		line := pos.String()
+		if strings.HasPrefix(line, wd) {
+			line = line[len(wd)+1:]
+		}
+		warns[i] = fmt.Sprintf("%s: %s is unused", line, param.Name())
+	}
 	return warns, nil
 }
 

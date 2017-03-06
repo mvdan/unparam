@@ -90,7 +90,7 @@ func unusedParams(args ...string) ([]string, error) {
 		}
 	}
 
-	var unused []*ssa.Parameter
+	var potential []*ssa.Parameter
 	for fn := range ssautil.AllFunctions(prog) {
 		if fn.Pkg == nil { // builtin?
 			continue
@@ -104,41 +104,37 @@ func unusedParams(args ...string) ([]string, error) {
 		if dummyImpl(fn.Blocks[0]) { // panic implementation
 			continue
 		}
-		sign := fn.Signature
-		var toAdd []*ssa.Parameter
-		for i, param := range fn.Params {
-			if i == 0 && sign.Recv() != nil { // receiver, not param
+		for i, par := range fn.Params {
+			if i == 0 && fn.Signature.Recv() != nil { // receiver
 				continue
 			}
-			switch param.Object().Name() {
+			switch par.Object().Name() {
 			case "", "_": // unnamed
 				continue
 			}
-			if len(*param.Referrers()) > 0 { // used
+			if len(*par.Referrers()) > 0 { // used
 				continue
 			}
-			toAdd = append(toAdd, param)
+			potential = append(potential, par)
 		}
-		if toAdd == nil { // skip extra checks
-			continue
-		}
-		if funcSigns[signString(sign)] { // could implement iface
-			continue
-		}
-		unused = append(unused, toAdd...)
 
 	}
-	sort.Slice(unused, func(i, j int) bool {
-		return unused[i].Pos() < unused[j].Pos()
+	sort.Slice(potential, func(i, j int) bool {
+		return potential[i].Pos() < potential[j].Pos()
 	})
-	warns := make([]string, len(unused))
-	for i, param := range unused {
-		pos := prog.Fset.Position(param.Pos())
+	warns := make([]string, 0, len(potential))
+	for _, par := range potential {
+		sign := par.Parent().Signature
+		if funcSigns[signString(sign)] { // could be required
+			continue
+		}
+		pos := prog.Fset.Position(par.Pos())
 		line := pos.String()
 		if strings.HasPrefix(line, wd) {
 			line = line[len(wd)+1:]
 		}
-		warns[i] = fmt.Sprintf("%s: %s is unused", line, param.Name())
+		warns = append(warns, fmt.Sprintf("%s: %s is unused",
+			line, par.Name()))
 	}
 	return warns, nil
 }

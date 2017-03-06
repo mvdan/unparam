@@ -4,6 +4,7 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"go/token"
@@ -81,8 +82,7 @@ func unusedParams(args ...string) ([]string, error) {
 				}
 			case *types.Interface:
 				for i := 0; i < x.NumMethods(); i++ {
-					m := x.Method(i)
-					addSign(m.Type())
+					addSign(x.Method(i).Type())
 				}
 			case *types.Signature:
 				addSign(x)
@@ -128,8 +128,7 @@ func unusedParams(args ...string) ([]string, error) {
 		if funcSigns[signString(sign)] { // could be required
 			continue
 		}
-		pos := prog.Fset.Position(par.Pos())
-		line := pos.String()
+		line := prog.Fset.Position(par.Pos()).String()
 		if strings.HasPrefix(line, wd) {
 			line = line[len(wd)+1:]
 		}
@@ -175,18 +174,24 @@ func dummyImpl(blk *ssa.BasicBlock) bool {
 	return false
 }
 
-func tupleStrs(t *types.Tuple) []string {
-	l := make([]string, t.Len())
+func tupleJoin(buf *bytes.Buffer, t *types.Tuple) {
+	buf.WriteByte('(')
 	for i := 0; i < t.Len(); i++ {
-		l[i] = t.At(i).Type().String()
+		if i > 0 {
+			buf.WriteString(", ")
+		}
+		buf.WriteString(t.At(i).Type().String())
 	}
-	return l
+	buf.WriteByte(')')
 }
+
+var signBuf = new(bytes.Buffer)
 
 // signString is similar to Signature.String(), but it ignores
 // param/result names.
 func signString(sign *types.Signature) string {
-	return fmt.Sprintf("(%s) (%s)",
-		strings.Join(tupleStrs(sign.Params()), ", "),
-		strings.Join(tupleStrs(sign.Results()), ", "))
+	signBuf.Reset()
+	tupleJoin(signBuf, sign.Params())
+	tupleJoin(signBuf, sign.Results())
+	return signBuf.String()
 }

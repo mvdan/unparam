@@ -108,13 +108,11 @@ func unusedParams(args ...string) ([]string, error) {
 		if !wantPkg[fn.Pkg.Pkg] { // not part of given pkgs
 			continue
 		}
-		sign := fn.Signature
-		if ifaceFuncs[signString(sign)] { // could implement iface
-			continue
-		}
 		if dummyImpl(fn.Blocks[0]) { // panic implementation
 			continue
 		}
+		sign := fn.Signature
+		var toAdd []*ssa.Parameter
 		for i, param := range fn.Params {
 			if i == 0 && sign.Recv() != nil { // receiver, not param
 				continue
@@ -126,8 +124,16 @@ func unusedParams(args ...string) ([]string, error) {
 			if len(*param.Referrers()) > 0 { // used
 				continue
 			}
-			unused = append(unused, param)
+			toAdd = append(toAdd, param)
 		}
+		if toAdd == nil { // skip extra checks
+			continue
+		}
+		if ifaceFuncs[signString(sign)] { // could implement iface
+			continue
+		}
+		unused = append(unused, toAdd...)
+
 	}
 	sort.Slice(unused, func(i, j int) bool {
 		return unused[i].Pos() < unused[j].Pos()

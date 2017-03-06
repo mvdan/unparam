@@ -153,9 +153,13 @@ var rxHarmlessCall = regexp.MustCompile(`(?i)\blog(ger)?\b|\bf?print`)
 func dummyImpl(blk *ssa.BasicBlock) bool {
 	for _, instr := range blk.Instrs {
 		switch x := instr.(type) {
-		case *ssa.Alloc, *ssa.Store, *ssa.MakeInterface,
-			*ssa.IndexAddr, *ssa.Slice:
-			// allow these for e.g. complex throw calls
+		case *ssa.Alloc, *ssa.Store, *ssa.UnOp, *ssa.BinOp,
+			*ssa.MakeInterface, *ssa.MakeMap, *ssa.Extract,
+			*ssa.IndexAddr, *ssa.FieldAddr, *ssa.Slice,
+			*ssa.Lookup, *ssa.ChangeType, *ssa.TypeAssert,
+			*ssa.Convert, *ssa.ChangeInterface:
+			// non-trivial expressions in panic/log/print
+			// calls
 		case *ssa.Return:
 			for _, val := range x.Results {
 				if _, ok := val.(*ssa.Const); !ok {

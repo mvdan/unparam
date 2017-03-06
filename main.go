@@ -53,12 +53,13 @@ func unusedParams(args ...string) ([]string, error) {
 	prog := ssautil.CreateProgram(iprog, 0)
 	prog.Build()
 
-	ifaceFuncs := make(map[string]bool)
-	addSign := func(sign *types.Signature) {
-		if sign.Params().Len() == 0 {
+	funcSigns := make(map[string]bool)
+	addSign := func(t types.Type) {
+		sign, ok := t.(*types.Signature)
+		if !ok || sign.Params().Len() == 0 {
 			return
 		}
-		ifaceFuncs[signString(sign)] = true
+		funcSigns[signString(sign)] = true
 	}
 	for _, pkg := range prog.AllPackages() {
 		for _, member := range pkg.Members {
@@ -66,11 +67,7 @@ func unusedParams(args ...string) ([]string, error) {
 			case token.FUNC:
 				params := member.Type().(*types.Signature).Params()
 				for i := 0; i < params.Len(); i++ {
-					p := params.At(i)
-					sign, ok := p.Type().(*types.Signature)
-					if ok {
-						addSign(sign)
-					}
+					addSign(params.At(i).Type())
 				}
 				continue
 			case token.TYPE:
@@ -80,16 +77,12 @@ func unusedParams(args ...string) ([]string, error) {
 			switch x := member.Type().Underlying().(type) {
 			case *types.Struct:
 				for i := 0; i < x.NumFields(); i++ {
-					f := x.Field(i)
-					sign, ok := f.Type().(*types.Signature)
-					if ok {
-						addSign(sign)
-					}
+					addSign(x.Field(i).Type())
 				}
 			case *types.Interface:
 				for i := 0; i < x.NumMethods(); i++ {
 					m := x.Method(i)
-					addSign(m.Type().(*types.Signature))
+					addSign(m.Type())
 				}
 			case *types.Signature:
 				addSign(x)
@@ -129,7 +122,7 @@ func unusedParams(args ...string) ([]string, error) {
 		if toAdd == nil { // skip extra checks
 			continue
 		}
-		if ifaceFuncs[signString(sign)] { // could implement iface
+		if funcSigns[signString(sign)] { // could implement iface
 			continue
 		}
 		unused = append(unused, toAdd...)

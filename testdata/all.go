@@ -60,15 +60,17 @@ type BarFunc func(a FooType, s string) int
 
 func BarImpl(a FooType, s string) int { return int(a) }
 
-func NoName(FooType) { println("foo") }
+func doWork() {}
 
-func UnderscoreName(_ FooType) { println("foo") }
+func NoName(FooType) { doWork() }
+
+func UnderscoreName(_ FooType) { doWork() }
 
 type BarStruct struct {
 	fn func(a FooType, b byte)
 }
 
-func BarField(a FooType, b byte) { println(a) }
+func BarField(a FooType, b byte) { doWork() }
 
 func FuncAsParameter(fn func(FooType) string) { fn(0) }
 

@@ -46,9 +46,9 @@ func unusedParams(args ...string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	pkgInfos := make(map[*types.Package]*types.Info)
+	wantPkg := make(map[*types.Package]bool)
 	for _, pinfo := range iprog.InitialPackages() {
-		pkgInfos[pinfo.Pkg] = &pinfo.Info
+		wantPkg[pinfo.Pkg] = true
 	}
 	prog := ssautil.CreateProgram(iprog, 0)
 	prog.Build()
@@ -105,8 +105,7 @@ func unusedParams(args ...string) ([]string, error) {
 		if len(fn.Blocks) == 0 { // stub
 			continue
 		}
-		info := pkgInfos[fn.Pkg.Pkg]
-		if info == nil { // not part of given pkgs
+		if !wantPkg[fn.Pkg.Pkg] { // not part of given pkgs
 			continue
 		}
 		sign := fn.Signature

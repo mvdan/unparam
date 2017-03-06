@@ -43,15 +43,15 @@ func unusedParams(args ...string) ([]string, error) {
 	if _, err := conf.FromArgs(paths, false); err != nil {
 		return nil, err
 	}
-	iprog, err := conf.Load()
+	lprog, err := conf.Load()
 	if err != nil {
 		return nil, err
 	}
 	wantPkg := make(map[*types.Package]bool)
-	for _, pinfo := range iprog.InitialPackages() {
-		wantPkg[pinfo.Pkg] = true
+	for _, info := range lprog.InitialPackages() {
+		wantPkg[info.Pkg] = true
 	}
-	prog := ssautil.CreateProgram(iprog, 0)
+	prog := ssautil.CreateProgram(lprog, 0)
 	prog.Build()
 
 	funcSigns := make(map[string]bool)
@@ -63,10 +63,10 @@ func unusedParams(args ...string) ([]string, error) {
 		funcSigns[signString(sign)] = true
 	}
 	for _, pkg := range prog.AllPackages() {
-		for _, member := range pkg.Members {
-			switch member.Token() {
+		for _, mb := range pkg.Members {
+			switch mb.Token() {
 			case token.FUNC:
-				params := member.Type().(*types.Signature).Params()
+				params := mb.Type().(*types.Signature).Params()
 				for i := 0; i < params.Len(); i++ {
 					addSign(params.At(i).Type())
 				}
@@ -75,7 +75,7 @@ func unusedParams(args ...string) ([]string, error) {
 			default:
 				continue
 			}
-			switch x := member.Type().Underlying().(type) {
+			switch x := mb.Type().Underlying().(type) {
 			case *types.Struct:
 				for i := 0; i < x.NumFields(); i++ {
 					addSign(x.Field(i).Type())

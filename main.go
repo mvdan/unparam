@@ -9,6 +9,7 @@ import (
 	"go/token"
 	"go/types"
 	"os"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -144,6 +145,8 @@ func unusedParams(args ...string) ([]string, error) {
 	return warns, nil
 }
 
+var rxHarmlessCall = regexp.MustCompile(`(?i)\blog(ger)?\b|\bf?print`)
+
 // dummyImpl reports whether a block is a dummy implementation. This is
 // true if the block will almost immediately panic, throw or return
 // constants only.
@@ -163,6 +166,9 @@ func dummyImpl(blk *ssa.BasicBlock) bool {
 		case *ssa.Panic:
 			return true
 		case *ssa.Call:
+			if rxHarmlessCall.MatchString(x.Call.Value.String()) {
+				continue
+			}
 			return x.Call.Value.Name() == "throw" // runtime's panic
 		default:
 			return false

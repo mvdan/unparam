@@ -1,6 +1,9 @@
 package foo
 
-import "net/http"
+import (
+	"log"
+	"net/http"
+)
 
 type FooType int
 
@@ -50,6 +53,8 @@ func throw(v ...interface{}) {}
 func ThrowImpl(f FooType) { throw("dummy") }
 
 func ZeroImpl(f FooType) (int, string, []byte) { return 0, "", nil }
+
+func LogImpl(f FooType) { log.Print("not implemented") }
 
 type BarFunc func(a FooType, s string) int
 

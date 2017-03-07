@@ -11,6 +11,17 @@ func AllUsed(a, b FooType) FooType { return a + b }
 
 func OneUnused(a, b FooType) FooType { return a }
 
+func doWork() {}
+
+var Sink interface{}
+
+func Parent() {
+	oneUnused := func(f FooType) {
+		doWork()
+	}
+	Sink = oneUnused
+}
+
 func Handler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("hi"))
 }
@@ -59,8 +70,6 @@ func LogImpl(f FooType) { log.Print("not implemented") }
 type BarFunc func(a FooType, s string) int
 
 func BarImpl(a FooType, s string) int { return int(a) }
-
-func doWork() {}
 
 func NoName(FooType) { doWork() }
 

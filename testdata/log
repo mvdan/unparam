@@ -1,3 +1,4 @@
 testdata/all.go:12:19: b is unused
-testdata/all.go:33:42: f is unused
-testdata/all.go:46:43: f is unused
+testdata/all.go:19:20: f is unused
+testdata/all.go:44:42: f is unused
+testdata/all.go:57:43: f is unused

@@ -48,6 +48,7 @@ type linter struct {
 	buf bytes.Buffer
 
 	funcSigns map[string]bool
+	seenTypes map[types.Type]bool
 }
 
 func (l *linter) warns(args ...string) ([]string, error) {
@@ -118,6 +119,7 @@ func (l *linter) warns(args ...string) ([]string, error) {
 		if tpkg := pkg.Pkg; tpkg != curPkg {
 			curPkg = tpkg
 			l.funcSigns = make(map[string]bool)
+			l.seenTypes = make(map[types.Type]bool)
 			addSigns(pkg, false)
 			for _, imp := range tpkg.Imports() {
 				addSigns(prog.Package(imp), true)
@@ -138,7 +140,12 @@ func (l *linter) warns(args ...string) ([]string, error) {
 }
 
 func (l *linter) addSign(t types.Type, topFunc bool) {
-	switch x := t.Underlying().(type) {
+	ut := t.Underlying()
+	if l.seenTypes[ut] {
+		return
+	}
+	l.seenTypes[ut] = true
+	switch x := ut.(type) {
 	case *types.Signature:
 		params := x.Params()
 		if params.Len() == 0 {

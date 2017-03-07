@@ -92,3 +92,7 @@ func Bar2Field(a FooType, r rune) { doWork() }
 func FuncAsParameter(fn func(FooType) string) { fn(0) }
 
 func PassedAsParam(f FooType) string { return "foo" }
+
+type RecursiveIface interface {
+	Foo(RecursiveIface)
+}

@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
+	"go/ast"
 	"go/token"
 	"go/types"
 	"os"
@@ -96,8 +97,11 @@ func unusedParams(args ...string) ([]string, error) {
 		}
 		funcSigns[signString(sign)] = true
 	}
-	addSigns := func(pkg *ssa.Package) {
+	addSigns := func(pkg *ssa.Package, onlyExported bool) {
 		for _, mb := range pkg.Members {
+			if onlyExported && !ast.IsExported(mb.Name()) {
+				continue
+			}
 			switch mb.Token() {
 			case token.FUNC:
 				params := mb.Type().(*types.Signature).Params()
@@ -132,9 +136,9 @@ func unusedParams(args ...string) ([]string, error) {
 		if tpkg := pkg.Pkg; tpkg != curPkg {
 			curPkg = tpkg
 			funcSigns = make(map[string]bool)
-			addSigns(pkg)
+			addSigns(pkg, false)
 			for _, imp := range tpkg.Imports() {
-				addSigns(prog.Package(imp))
+				addSigns(prog.Package(imp), true)
 			}
 		}
 		sign := par.Parent().Signature

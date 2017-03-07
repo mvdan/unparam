@@ -35,7 +35,9 @@ func FooImpl(w http.ResponseWriter, code FooType) error {
 	return nil
 }
 
-func (f FooType) AllUsed(a, b FooType) FooType { return a + b }
+func (f FooType) AllUsed(a FooType) FooType { return f + a }
+
+func (f FooType) OneUnused(a FooType) FooType { return f }
 
 func DummyImpl(f FooType) {}
 
@@ -94,6 +96,13 @@ func FuncAsParam(fn func(FooType) string) { fn(0) }
 func PassedAsParam(f FooType) string {
 	doWork()
 	return "foo"
+}
+
+func (f FooType) FuncAsParam2(fn func(FooType) []byte) { fn(0) }
+
+func PassedAsParam2(f FooType) []byte {
+	doWork()
+	return nil
 }
 
 type RecursiveIface interface {

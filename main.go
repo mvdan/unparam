@@ -139,19 +139,18 @@ func (l *linter) warns(args ...string) ([]string, error) {
 	return warns, nil
 }
 
-func (l *linter) addSign(t types.Type, topFunc bool) {
-	ut := t.Underlying()
-	if l.seenTypes[ut] {
+func (l *linter) addSign(t types.Type, ignoreSign bool) {
+	if l.seenTypes[t] {
 		return
 	}
-	l.seenTypes[ut] = true
-	switch x := ut.(type) {
+	l.seenTypes[t] = true
+	switch x := t.(type) {
 	case *types.Signature:
 		params := x.Params()
 		if params.Len() == 0 {
 			break
 		}
-		if !topFunc { // otherwise funcs block themselves
+		if !ignoreSign { // otherwise funcs block themselves
 			l.funcSigns[l.signString(x)] = true
 		}
 		for i := 0; i < params.Len(); i++ {
@@ -161,11 +160,16 @@ func (l *linter) addSign(t types.Type, topFunc bool) {
 		for i := 0; i < x.NumFields(); i++ {
 			l.addSign(x.Field(i).Type(), false)
 		}
+	case *types.Named:
+		for i := 0; i < x.NumMethods(); i++ {
+			l.addSign(x.Method(i).Type(), true)
+		}
 	case *types.Interface:
 		for i := 0; i < x.NumMethods(); i++ {
 			l.addSign(x.Method(i).Type(), false)
 		}
 	}
+	l.addSign(t.Underlying(), false)
 }
 
 var rxHarmlessCall = regexp.MustCompile(`(?i)\blog(ger)?\b|\bf?print`)

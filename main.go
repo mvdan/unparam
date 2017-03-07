@@ -88,46 +88,17 @@ func unusedParams(args ...string) ([]string, error) {
 		return potential[i].Pos() < potential[j].Pos()
 	})
 
-	var curPkg *types.Package
 	var funcSigns map[string]bool
-	addSign := func(t types.Type) {
-		sign, ok := t.(*types.Signature)
-		if !ok || sign.Params().Len() == 0 {
-			return
-		}
-		funcSigns[signString(sign)] = true
-	}
 	addSigns := func(pkg *ssa.Package, onlyExported bool) {
 		for _, mb := range pkg.Members {
 			if onlyExported && !ast.IsExported(mb.Name()) {
 				continue
 			}
-			switch mb.Token() {
-			case token.FUNC:
-				params := mb.Type().(*types.Signature).Params()
-				for i := 0; i < params.Len(); i++ {
-					addSign(params.At(i).Type())
-				}
-				continue
-			case token.TYPE:
-			default:
-				continue
-			}
-			switch x := mb.Type().Underlying().(type) {
-			case *types.Struct:
-				for i := 0; i < x.NumFields(); i++ {
-					addSign(x.Field(i).Type())
-				}
-			case *types.Interface:
-				for i := 0; i < x.NumMethods(); i++ {
-					addSign(x.Method(i).Type())
-				}
-			case *types.Signature:
-				addSign(x)
-			}
+			addSign(funcSigns, mb.Type(), mb.Token() == token.FUNC)
 		}
 	}
 
+	var curPkg *types.Package
 	warns := make([]string, 0, len(potential))
 	for _, par := range potential {
 		pkg := par.Parent().Pkg
@@ -153,6 +124,30 @@ func unusedParams(args ...string) ([]string, error) {
 			line, par.Name()))
 	}
 	return warns, nil
+}
+
+func addSign(m map[string]bool, t types.Type, topFunc bool) {
+	switch x := t.Underlying().(type) {
+	case *types.Signature:
+		params := x.Params()
+		if params.Len() == 0 {
+			break
+		}
+		if !topFunc { // otherwise funcs block themselves
+			m[signString(x)] = true
+		}
+		for i := 0; i < params.Len(); i++ {
+			addSign(m, params.At(i).Type(), false)
+		}
+	case *types.Struct:
+		for i := 0; i < x.NumFields(); i++ {
+			addSign(m, x.Field(i).Type(), false)
+		}
+	case *types.Interface:
+		for i := 0; i < x.NumMethods(); i++ {
+			addSign(m, x.Method(i).Type(), false)
+		}
+	}
 }
 
 var rxHarmlessCall = regexp.MustCompile(`(?i)\blog(ger)?\b|\bf?print`)

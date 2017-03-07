@@ -72,6 +72,14 @@ type BarStruct struct {
 
 func BarField(a FooType, b byte) { doWork() }
 
+type Bar2Struct struct {
+	st struct{
+		fn func(a FooType, r rune)
+	}
+}
+
+func Bar2Field(a FooType, r rune) { doWork() }
+
 func FuncAsParameter(fn func(FooType) string) { fn(0) }
 
 func PassedAsParam(f FooType) string { return "foo" }

@@ -178,9 +178,16 @@ var rxHarmlessCall = regexp.MustCompile(`(?i)\blog(ger)?\b|\bf?print`)
 // true if the block will almost immediately panic, throw or return
 // constants only.
 func dummyImpl(blk *ssa.BasicBlock) bool {
+	var ops [8]*ssa.Value
 	for _, instr := range blk.Instrs {
-		if !harmlessIfOps(instr) {
-			return false
+		for _, val := range instr.Operands(ops[:0]) {
+			switch (*val).(type) {
+			case nil, *ssa.Const, *ssa.ChangeType, *ssa.Alloc,
+				*ssa.MakeInterface, *ssa.Function,
+				*ssa.Global, *ssa.IndexAddr, *ssa.Slice:
+			default:
+				return false
+			}
 		}
 		switch x := instr.(type) {
 		case *ssa.Alloc, *ssa.Store, *ssa.UnOp, *ssa.BinOp,
@@ -202,26 +209,6 @@ func dummyImpl(blk *ssa.BasicBlock) bool {
 		}
 	}
 	return false
-}
-
-func harmlessIfOps(instr ssa.Instruction) bool {
-	withOps, ok := instr.(interface{
-		Operands([]*ssa.Value) []*ssa.Value
-	})
-	if !ok {
-		return true
-	}
-	var ops [8]*ssa.Value
-	for _, val := range withOps.Operands(ops[:0]) {
-		switch (*val).(type) {
-		case nil, *ssa.Const, *ssa.ChangeType, *ssa.Alloc,
-			*ssa.MakeInterface, *ssa.Function,
-			*ssa.Global, *ssa.IndexAddr, *ssa.Slice:
-		default:
-			return false
-		}
-	}
-	return true
 }
 
 func tupleJoin(buf *bytes.Buffer, t *types.Tuple) {

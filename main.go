@@ -39,6 +39,18 @@ func unusedParams(args ...string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	l := &linter{wd: wd}
+	return l.warns(args...)
+}
+
+type linter struct {
+	wd  string
+	buf bytes.Buffer
+
+	funcSigns map[string]bool
+}
+
+func (l *linter) warns(args ...string) ([]string, error) {
 	paths := gotool.ImportPaths(args)
 	var conf loader.Config
 	if _, err := conf.FromArgs(paths, false); err != nil {
@@ -88,13 +100,12 @@ func unusedParams(args ...string) ([]string, error) {
 		return potential[i].Pos() < potential[j].Pos()
 	})
 
-	var funcSigns map[string]bool
 	addSigns := func(pkg *ssa.Package, onlyExported bool) {
 		for _, mb := range pkg.Members {
 			if onlyExported && !ast.IsExported(mb.Name()) {
 				continue
 			}
-			addSign(funcSigns, mb.Type(), mb.Token() == token.FUNC)
+			l.addSign(mb.Type(), mb.Token() == token.FUNC)
 		}
 	}
 
@@ -106,19 +117,19 @@ func unusedParams(args ...string) ([]string, error) {
 		// the warnings for any package contiguously
 		if tpkg := pkg.Pkg; tpkg != curPkg {
 			curPkg = tpkg
-			funcSigns = make(map[string]bool)
+			l.funcSigns = make(map[string]bool)
 			addSigns(pkg, false)
 			for _, imp := range tpkg.Imports() {
 				addSigns(prog.Package(imp), true)
 			}
 		}
 		sign := par.Parent().Signature
-		if funcSigns[signString(sign)] { // could be required
+		if l.funcSigns[l.signString(sign)] { // could be required
 			continue
 		}
 		line := prog.Fset.Position(par.Pos()).String()
-		if strings.HasPrefix(line, wd) {
-			line = line[len(wd)+1:]
+		if strings.HasPrefix(line, l.wd) {
+			line = line[len(l.wd)+1:]
 		}
 		warns = append(warns, fmt.Sprintf("%s: %s is unused",
 			line, par.Name()))
@@ -126,7 +137,7 @@ func unusedParams(args ...string) ([]string, error) {
 	return warns, nil
 }
 
-func addSign(m map[string]bool, t types.Type, topFunc bool) {
+func (l *linter) addSign(t types.Type, topFunc bool) {
 	switch x := t.Underlying().(type) {
 	case *types.Signature:
 		params := x.Params()
@@ -134,18 +145,18 @@ func addSign(m map[string]bool, t types.Type, topFunc bool) {
 			break
 		}
 		if !topFunc { // otherwise funcs block themselves
-			m[signString(x)] = true
+			l.funcSigns[l.signString(x)] = true
 		}
 		for i := 0; i < params.Len(); i++ {
-			addSign(m, params.At(i).Type(), false)
+			l.addSign(params.At(i).Type(), false)
 		}
 	case *types.Struct:
 		for i := 0; i < x.NumFields(); i++ {
-			addSign(m, x.Field(i).Type(), false)
+			l.addSign(x.Field(i).Type(), false)
 		}
 	case *types.Interface:
 		for i := 0; i < x.NumMethods(); i++ {
-			addSign(m, x.Method(i).Type(), false)
+			l.addSign(x.Method(i).Type(), false)
 		}
 	}
 }
@@ -197,13 +208,11 @@ func tupleJoin(buf *bytes.Buffer, t *types.Tuple) {
 	buf.WriteByte(')')
 }
 
-var signBuf = new(bytes.Buffer)
-
 // signString is similar to Signature.String(), but it ignores
 // param/result names.
-func signString(sign *types.Signature) string {
-	signBuf.Reset()
-	tupleJoin(signBuf, sign.Params())
-	tupleJoin(signBuf, sign.Results())
-	return signBuf.String()
+func (l *linter) signString(sign *types.Signature) string {
+	l.buf.Reset()
+	tupleJoin(&l.buf, sign.Params())
+	tupleJoin(&l.buf, sign.Results())
+	return l.buf.String()
 }

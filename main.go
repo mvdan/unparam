@@ -179,6 +179,9 @@ var rxHarmlessCall = regexp.MustCompile(`(?i)\blog(ger)?\b|\bf?print`)
 // constants only.
 func dummyImpl(blk *ssa.BasicBlock) bool {
 	for _, instr := range blk.Instrs {
+		if !harmlessIfOps(instr) {
+			return false
+		}
 		switch x := instr.(type) {
 		case *ssa.Alloc, *ssa.Store, *ssa.UnOp, *ssa.BinOp,
 			*ssa.MakeInterface, *ssa.MakeMap, *ssa.Extract,
@@ -187,14 +190,7 @@ func dummyImpl(blk *ssa.BasicBlock) bool {
 			*ssa.Convert, *ssa.ChangeInterface:
 			// non-trivial expressions in panic/log/print
 			// calls
-		case *ssa.Return:
-			for _, val := range x.Results {
-				if _, ok := val.(*ssa.Const); !ok {
-					return false
-				}
-			}
-			return true
-		case *ssa.Panic:
+		case *ssa.Return, *ssa.Panic:
 			return true
 		case *ssa.Call:
 			if rxHarmlessCall.MatchString(x.Call.Value.String()) {
@@ -206,6 +202,26 @@ func dummyImpl(blk *ssa.BasicBlock) bool {
 		}
 	}
 	return false
+}
+
+func harmlessIfOps(instr ssa.Instruction) bool {
+	withOps, ok := instr.(interface{
+		Operands([]*ssa.Value) []*ssa.Value
+	})
+	if !ok {
+		return true
+	}
+	var ops [8]*ssa.Value
+	for _, val := range withOps.Operands(ops[:0]) {
+		switch (*val).(type) {
+		case nil, *ssa.Const, *ssa.ChangeType, *ssa.Alloc,
+			*ssa.MakeInterface, *ssa.Function,
+			*ssa.Global, *ssa.IndexAddr, *ssa.Slice:
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 func tupleJoin(buf *bytes.Buffer, t *types.Tuple) {

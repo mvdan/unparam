@@ -67,6 +67,14 @@ func ThrowImpl(f FooType) { throw("dummy") }
 
 func ZeroImpl(f FooType) (int, string, []byte) { return 0, "", nil }
 
+const ConstFoo = FooType(123)
+
+func (f FooType) Error() string { return "foo" }
+
+func CustomErrImpl(f FooType) error { return ConstFoo }
+
+func NonConstImpl(f FooType, s string) error { return f }
+
 func LogImpl(f FooType) { log.Print("not implemented") }
 
 type BarFunc func(a FooType, s string) int

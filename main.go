@@ -54,42 +54,6 @@ func unusedParams(args ...string) ([]string, error) {
 	prog := ssautil.CreateProgram(lprog, 0)
 	prog.Build()
 
-	funcSigns := make(map[string]bool)
-	addSign := func(t types.Type) {
-		sign, ok := t.(*types.Signature)
-		if !ok || sign.Params().Len() == 0 {
-			return
-		}
-		funcSigns[signString(sign)] = true
-	}
-	for _, pkg := range prog.AllPackages() {
-		for _, mb := range pkg.Members {
-			switch mb.Token() {
-			case token.FUNC:
-				params := mb.Type().(*types.Signature).Params()
-				for i := 0; i < params.Len(); i++ {
-					addSign(params.At(i).Type())
-				}
-				continue
-			case token.TYPE:
-			default:
-				continue
-			}
-			switch x := mb.Type().Underlying().(type) {
-			case *types.Struct:
-				for i := 0; i < x.NumFields(); i++ {
-					addSign(x.Field(i).Type())
-				}
-			case *types.Interface:
-				for i := 0; i < x.NumMethods(); i++ {
-					addSign(x.Method(i).Type())
-				}
-			case *types.Signature:
-				addSign(x)
-			}
-		}
-	}
-
 	var potential []*ssa.Parameter
 	for fn := range ssautil.AllFunctions(prog) {
 		if fn.Pkg == nil { // builtin?
@@ -122,8 +86,57 @@ func unusedParams(args ...string) ([]string, error) {
 	sort.Slice(potential, func(i, j int) bool {
 		return potential[i].Pos() < potential[j].Pos()
 	})
+
+	var curPkg *types.Package
+	var funcSigns map[string]bool
+	addSign := func(t types.Type) {
+		sign, ok := t.(*types.Signature)
+		if !ok || sign.Params().Len() == 0 {
+			return
+		}
+		funcSigns[signString(sign)] = true
+	}
+	addSigns := func(pkg *ssa.Package) {
+		for _, mb := range pkg.Members {
+			switch mb.Token() {
+			case token.FUNC:
+				params := mb.Type().(*types.Signature).Params()
+				for i := 0; i < params.Len(); i++ {
+					addSign(params.At(i).Type())
+				}
+				continue
+			case token.TYPE:
+			default:
+				continue
+			}
+			switch x := mb.Type().Underlying().(type) {
+			case *types.Struct:
+				for i := 0; i < x.NumFields(); i++ {
+					addSign(x.Field(i).Type())
+				}
+			case *types.Interface:
+				for i := 0; i < x.NumMethods(); i++ {
+					addSign(x.Method(i).Type())
+				}
+			case *types.Signature:
+				addSign(x)
+			}
+		}
+	}
+
 	warns := make([]string, 0, len(potential))
 	for _, par := range potential {
+		pkg := par.Parent().Pkg
+		// since they are sorted by position, we will see all
+		// the warnings for any package contiguously
+		if tpkg := pkg.Pkg; tpkg != curPkg {
+			curPkg = tpkg
+			funcSigns = make(map[string]bool)
+			addSigns(pkg)
+			for _, imp := range tpkg.Imports() {
+				addSigns(prog.Package(imp))
+			}
+		}
 		sign := par.Parent().Signature
 		if funcSigns[signString(sign)] { // could be required
 			continue

@@ -14,6 +14,9 @@ To minimise false positives, it ignores:
 * Funcs that have empty bodies
 * Funcs that will almost immediately panic or return constants
 
-Note that false positives can still occur by design. If you find any,
-please file a bug. You can also use an underscore name for the parameter
-to make the tool ignore it.
+False positives can still occur by design. The aim of the tool is to be
+as precise as possible - if you find any, file a bug.
+
+Note that "reachable" means func signatures found in top-level
+declarations in each package and all of its direct dependencies. The
+tool ignores transitive dependencies and local signatures.

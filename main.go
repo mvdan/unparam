@@ -172,7 +172,7 @@ func (l *linter) addSign(t types.Type, ignoreSign bool) {
 	l.addSign(t.Underlying(), false)
 }
 
-var rxHarmlessCall = regexp.MustCompile(`(?i)\blog(ger)?\b|\bf?print`)
+var rxHarmlessCall = regexp.MustCompile(`(?i)\b(log(ger)?|errors)\b|\bf?print`)
 
 // dummyImpl reports whether a block is a dummy implementation. This is
 // true if the block will almost immediately panic, throw or return
@@ -181,10 +181,14 @@ func dummyImpl(blk *ssa.BasicBlock) bool {
 	var ops [8]*ssa.Value
 	for _, instr := range blk.Instrs {
 		for _, val := range instr.Operands(ops[:0]) {
-			switch (*val).(type) {
+			switch x := (*val).(type) {
 			case nil, *ssa.Const, *ssa.ChangeType, *ssa.Alloc,
 				*ssa.MakeInterface, *ssa.Function,
 				*ssa.Global, *ssa.IndexAddr, *ssa.Slice:
+			case *ssa.Call:
+				if rxHarmlessCall.MatchString(x.Call.Value.String()) {
+					continue
+				}
 			default:
 				return false
 			}

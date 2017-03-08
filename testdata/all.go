@@ -1,6 +1,7 @@
 package foo
 
 import (
+	"errors"
 	"log"
 	"net/http"
 )
@@ -66,6 +67,8 @@ func throw(v ...interface{}) {}
 func ThrowImpl(f FooType) { throw("dummy") }
 
 func ZeroImpl(f FooType) (int, string, []byte) { return 0, "", nil }
+
+func ErrorsImpl(f FooType) error { return errors.New("unimpl") }
 
 const ConstFoo = FooType(123)
 

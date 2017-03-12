@@ -22,6 +22,8 @@ import (
 	"github.com/kisielk/gotool"
 )
 
+var tests = flag.Bool("tests", true, "include tests")
+
 func main() {
 	flag.Parse()
 	warns, err := unusedParams(flag.Args()...)
@@ -54,7 +56,7 @@ type linter struct {
 func (l *linter) warns(args ...string) ([]string, error) {
 	paths := gotool.ImportPaths(args)
 	var conf loader.Config
-	if _, err := conf.FromArgs(paths, false); err != nil {
+	if _, err := conf.FromArgs(paths, *tests); err != nil {
 		return nil, err
 	}
 	lprog, err := conf.Load()

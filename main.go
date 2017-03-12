@@ -171,12 +171,18 @@ func (l *linter) addSign(t types.Type, ignoreSign bool) {
 		for i := 0; i < x.NumMethods(); i++ {
 			l.addSign(x.Method(i).Type(), true)
 		}
+		l.addSign(t.Underlying(), false)
 	case *types.Interface:
 		for i := 0; i < x.NumMethods(); i++ {
 			l.addSign(x.Method(i).Type(), false)
 		}
+	case withElem:
+		l.addSign(x.Elem(), false)
 	}
-	l.addSign(t.Underlying(), false)
+}
+
+type withElem interface {
+	Elem() types.Type
 }
 
 var rxHarmlessCall = regexp.MustCompile(`(?i)\b(log(ger)?|errors)\b|\bf?print`)

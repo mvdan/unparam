@@ -119,3 +119,10 @@ func PassedAsParam2(f FooType) []byte {
 type RecursiveIface interface {
 	Foo(RecursiveIface)
 }
+
+func AsSliceElem(f FooType) []int {
+	doWork()
+	return nil
+}
+
+var SliceElems = []func(FooType) []int{AsSliceElem}

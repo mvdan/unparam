@@ -97,9 +97,8 @@ func (l *linter) warns(args ...string) ([]string, error) {
 		}
 
 	}
-	sort.Slice(potential, func(i, j int) bool {
-		return potential[i].Pos() < potential[j].Pos()
-	})
+	// TODO: replace by sort.Slice once we drop Go 1.7 support
+	sort.Sort(byPos(potential))
 
 	addSigns := func(pkg *ssa.Package, onlyExported bool) {
 		for _, mb := range pkg.Members {
@@ -138,6 +137,12 @@ func (l *linter) warns(args ...string) ([]string, error) {
 	}
 	return warns, nil
 }
+
+type byPos []*ssa.Parameter
+
+func (p byPos) Len() int           { return len(p) }
+func (p byPos) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+func (p byPos) Less(i, j int) bool { return p[i].Pos() < p[j].Pos() }
 
 func (l *linter) addSign(t types.Type, ignoreSign bool) {
 	if l.seenTypes[t] {

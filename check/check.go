@@ -1,6 +1,8 @@
 // Copyright (c) 2017, Daniel Martí <mvdan@mvdan.cc>
 // See LICENSE for licensing information
 
+// Package check implements the unparam linter. Note that its API is not
+// stable.
 package check
 
 import (
@@ -19,6 +21,7 @@ import (
 	"golang.org/x/tools/go/ssa/ssautil"
 
 	"github.com/kisielk/gotool"
+	"github.com/mvdan/lint"
 )
 
 func UnusedParams(tests bool, args ...string) ([]string, error) {
@@ -26,11 +29,11 @@ func UnusedParams(tests bool, args ...string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	l := &linter{wd: wd, tests: tests}
-	return l.warns(args...)
+	c := &Checker{wd: wd, tests: tests}
+	return c.lines(args...)
 }
 
-type linter struct {
+type Checker struct {
 	wd  string
 	buf bytes.Buffer
 
@@ -40,22 +43,38 @@ type linter struct {
 	seenTypes map[types.Type]bool
 }
 
-func (l *linter) warns(args ...string) ([]string, error) {
+func (c *Checker) lines(args ...string) ([]string, error) {
 	paths := gotool.ImportPaths(args)
 	var conf loader.Config
-	if _, err := conf.FromArgs(paths, l.tests); err != nil {
+	if _, err := conf.FromArgs(paths, c.tests); err != nil {
 		return nil, err
 	}
 	lprog, err := conf.Load()
 	if err != nil {
 		return nil, err
 	}
+	prog := ssautil.CreateProgram(lprog, 0)
+	prog.Build()
+	issues, err := c.Check(lprog, prog)
+	if err != nil {
+		return nil, err
+	}
+	lines := make([]string, len(issues))
+	for i, issue := range issues {
+		fpos := prog.Fset.Position(issue.Pos).String()
+		if strings.HasPrefix(fpos, c.wd) {
+			fpos = fpos[len(c.wd)+1:]
+		}
+		lines[i] = fmt.Sprintf("%s: %s", fpos, issue.Msg)
+	}
+	return lines, nil
+}
+
+func (c *Checker) Check(lprog *loader.Program, prog *ssa.Program) ([]lint.Issue, error) {
 	wantPkg := make(map[*types.Package]bool)
 	for _, info := range lprog.InitialPackages() {
 		wantPkg[info.Pkg] = true
 	}
-	prog := ssautil.CreateProgram(lprog, 0)
-	prog.Build()
 
 	var potential []*ssa.Parameter
 	for fn := range ssautil.AllFunctions(prog) {
@@ -94,37 +113,35 @@ func (l *linter) warns(args ...string) ([]string, error) {
 			if onlyExported && !ast.IsExported(mb.Name()) {
 				continue
 			}
-			l.addSign(mb.Type(), mb.Token() == token.FUNC)
+			c.addSign(mb.Type(), mb.Token() == token.FUNC)
 		}
 	}
 
 	var curPkg *types.Package
-	warns := make([]string, 0, len(potential))
+	issues := make([]lint.Issue, 0, len(potential))
 	for _, par := range potential {
 		pkg := par.Parent().Pkg
 		// since they are sorted by position, we will see all
 		// the warnings for any package contiguously
 		if tpkg := pkg.Pkg; tpkg != curPkg {
 			curPkg = tpkg
-			l.funcSigns = make(map[string]bool)
-			l.seenTypes = make(map[types.Type]bool)
+			c.funcSigns = make(map[string]bool)
+			c.seenTypes = make(map[types.Type]bool)
 			addSigns(pkg, false)
 			for _, imp := range tpkg.Imports() {
 				addSigns(prog.Package(imp), true)
 			}
 		}
 		sign := par.Parent().Signature
-		if l.funcSigns[l.signString(sign)] { // could be required
+		if c.funcSigns[c.signString(sign)] { // could be required
 			continue
 		}
-		line := prog.Fset.Position(par.Pos()).String()
-		if strings.HasPrefix(line, l.wd) {
-			line = line[len(l.wd)+1:]
-		}
-		warns = append(warns, fmt.Sprintf("%s: %s is unused",
-			line, par.Name()))
+		issues = append(issues, lint.Issue{
+			Pos: par.Pos(),
+			Msg: fmt.Sprintf("%s is unused", par.Name()),
+		})
 	}
-	return warns, nil
+	return issues, nil
 }
 
 type byPos []*ssa.Parameter
@@ -133,11 +150,11 @@ func (p byPos) Len() int           { return len(p) }
 func (p byPos) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 func (p byPos) Less(i, j int) bool { return p[i].Pos() < p[j].Pos() }
 
-func (l *linter) addSign(t types.Type, ignoreSign bool) {
-	if l.seenTypes[t] {
+func (c *Checker) addSign(t types.Type, ignoreSign bool) {
+	if c.seenTypes[t] {
 		return
 	}
-	l.seenTypes[t] = true
+	c.seenTypes[t] = true
 	switch x := t.(type) {
 	case *types.Signature:
 		params := x.Params()
@@ -145,26 +162,26 @@ func (l *linter) addSign(t types.Type, ignoreSign bool) {
 			break
 		}
 		if !ignoreSign { // otherwise funcs block themselves
-			l.funcSigns[l.signString(x)] = true
+			c.funcSigns[c.signString(x)] = true
 		}
 		for i := 0; i < params.Len(); i++ {
-			l.addSign(params.At(i).Type(), false)
+			c.addSign(params.At(i).Type(), false)
 		}
 	case *types.Struct:
 		for i := 0; i < x.NumFields(); i++ {
-			l.addSign(x.Field(i).Type(), false)
+			c.addSign(x.Field(i).Type(), false)
 		}
 	case *types.Named:
 		for i := 0; i < x.NumMethods(); i++ {
-			l.addSign(x.Method(i).Type(), true)
+			c.addSign(x.Method(i).Type(), true)
 		}
-		l.addSign(t.Underlying(), false)
+		c.addSign(t.Underlying(), false)
 	case *types.Interface:
 		for i := 0; i < x.NumMethods(); i++ {
-			l.addSign(x.Method(i).Type(), false)
+			c.addSign(x.Method(i).Type(), false)
 		}
 	case withElem:
-		l.addSign(x.Elem(), false)
+		c.addSign(x.Elem(), false)
 	}
 }
 
@@ -228,9 +245,9 @@ func tupleJoin(buf *bytes.Buffer, t *types.Tuple) {
 
 // signString is similar to Signature.String(), but it ignores
 // param/result names.
-func (l *linter) signString(sign *types.Signature) string {
-	l.buf.Reset()
-	tupleJoin(&l.buf, sign.Params())
-	tupleJoin(&l.buf, sign.Results())
-	return l.buf.String()
+func (c *Checker) signString(sign *types.Signature) string {
+	c.buf.Reset()
+	tupleJoin(&c.buf, sign.Params())
+	tupleJoin(&c.buf, sign.Results())
+	return c.buf.String()
 }

@@ -61,14 +61,22 @@ func (c *Checker) lines(args ...string) ([]string, error) {
 	}
 	lines := make([]string, len(issues))
 	for i, issue := range issues {
-		fpos := prog.Fset.Position(issue.Pos).String()
+		fpos := prog.Fset.Position(issue.Pos()).String()
 		if strings.HasPrefix(fpos, c.wd) {
 			fpos = fpos[len(c.wd)+1:]
 		}
-		lines[i] = fmt.Sprintf("%s: %s", fpos, issue.Msg)
+		lines[i] = fmt.Sprintf("%s: %s", fpos, issue.Message())
 	}
 	return lines, nil
 }
+
+type Issue struct {
+        pos token.Pos
+        msg string
+}
+
+func (i Issue) Pos() token.Pos  { return i.pos }
+func (i Issue) Message() string { return i.msg }
 
 func (c *Checker) Check(lprog *loader.Program, prog *ssa.Program) ([]lint.Issue, error) {
 	wantPkg := make(map[*types.Package]bool)
@@ -136,9 +144,9 @@ func (c *Checker) Check(lprog *loader.Program, prog *ssa.Program) ([]lint.Issue,
 		if c.funcSigns[c.signString(sign)] { // could be required
 			continue
 		}
-		issues = append(issues, lint.Issue{
-			Pos: par.Pos(),
-			Msg: fmt.Sprintf("%s is unused", par.Name()),
+		issues = append(issues, Issue{
+			pos: par.Pos(),
+			msg: fmt.Sprintf("%s is unused", par.Name()),
 		})
 	}
 	return issues, nil

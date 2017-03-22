@@ -71,8 +71,8 @@ func (c *Checker) lines(args ...string) ([]string, error) {
 }
 
 type Issue struct {
-        pos token.Pos
-        msg string
+	pos token.Pos
+	msg string
 }
 
 func (i Issue) Pos() token.Pos  { return i.pos }

@@ -34,6 +34,9 @@ func UnusedParams(tests bool, args ...string) ([]string, error) {
 }
 
 type Checker struct {
+	lprog *loader.Program
+	prog  *ssa.Program
+
 	wd  string
 	buf bytes.Buffer
 
@@ -55,7 +58,9 @@ func (c *Checker) lines(args ...string) ([]string, error) {
 	}
 	prog := ssautil.CreateProgram(lprog, 0)
 	prog.Build()
-	issues, err := c.Check(lprog, prog)
+	c.Program(lprog)
+	c.ProgramSSA(prog)
+	issues, err := c.Check()
 	if err != nil {
 		return nil, err
 	}
@@ -78,14 +83,22 @@ type Issue struct {
 func (i Issue) Pos() token.Pos  { return i.pos }
 func (i Issue) Message() string { return i.msg }
 
-func (c *Checker) Check(lprog *loader.Program, prog *ssa.Program) ([]lint.Issue, error) {
+func (c *Checker) Program(lprog *loader.Program) {
+	c.lprog = lprog
+}
+
+func (c *Checker) ProgramSSA(prog *ssa.Program) {
+	c.prog = prog
+}
+
+func (c *Checker) Check() ([]lint.Issue, error) {
 	wantPkg := make(map[*types.Package]bool)
-	for _, info := range lprog.InitialPackages() {
+	for _, info := range c.lprog.InitialPackages() {
 		wantPkg[info.Pkg] = true
 	}
 
 	var potential []*ssa.Parameter
-	for fn := range ssautil.AllFunctions(prog) {
+	for fn := range ssautil.AllFunctions(c.prog) {
 		if fn.Pkg == nil { // builtin?
 			continue
 		}
@@ -137,7 +150,7 @@ func (c *Checker) Check(lprog *loader.Program, prog *ssa.Program) ([]lint.Issue,
 			c.seenTypes = make(map[types.Type]bool)
 			addSigns(pkg, false)
 			for _, imp := range tpkg.Imports() {
-				addSigns(prog.Package(imp), true)
+				addSigns(c.prog.Package(imp), true)
 			}
 		}
 		sign := par.Parent().Signature

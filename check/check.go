@@ -46,6 +46,11 @@ type Checker struct {
 	seenTypes map[types.Type]bool
 }
 
+var (
+	_ lint.Checker = (*Checker)(nil)
+	_ lint.WithSSA = (*Checker)(nil)
+)
+
 func (c *Checker) lines(args ...string) ([]string, error) {
 	paths := gotool.ImportPaths(args)
 	var conf loader.Config

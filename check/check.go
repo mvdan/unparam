@@ -119,22 +119,12 @@ funcLoop:
 		if dummyImpl(fn.Blocks[0]) { // panic implementation
 			continue
 		}
-		cn := cg.Nodes[fn]
-		for _, edge := range cn.In {
-			site := edge.Site
-			caller := edge.Caller.Func
-			for _, val := range caller.Params {
-				if val == site.Common().Value {
-					continue funcLoop
-				}
-			}
-		}
-		if refs := fn.Referrers(); refs != nil {
-			for _, instr := range *refs {
-				switch instr.(type) {
-				case *ssa.Store:
-					continue funcLoop
-				}
+		for _, edge := range cg.Nodes[fn].In {
+			switch edge.Site.Common().Value.(type) {
+			case *ssa.Parameter, *ssa.UnOp:
+				// called via a paramter or field, type
+				// is set in stone.
+				continue funcLoop
 			}
 		}
 		for i, par := range fn.Params {

@@ -149,9 +149,9 @@ funcLoop:
 	// TODO: replace by sort.Slice once we drop Go 1.7 support
 	sort.Sort(byPos(potential))
 
-	addSigns := func(pkg *ssa.Package, onlyExported bool) {
+	addSigns := func(pkg *ssa.Package) {
 		for _, mb := range pkg.Members {
-			if onlyExported && !ast.IsExported(mb.Name()) {
+			if !ast.IsExported(mb.Name()) {
 				continue
 			}
 			c.addSign(mb.Type(), mb.Token() == token.FUNC)
@@ -168,9 +168,9 @@ funcLoop:
 			curPkg = tpkg
 			c.funcSigns = make(map[string]bool)
 			c.seenTypes = make(map[types.Type]bool)
-			addSigns(pkg, false)
+			addSigns(pkg)
 			for _, imp := range tpkg.Imports() {
-				addSigns(c.prog.Package(imp), true)
+				addSigns(c.prog.Package(imp))
 			}
 		}
 		sign := par.Parent().Signature

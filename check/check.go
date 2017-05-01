@@ -103,6 +103,7 @@ func (c *Checker) Check() ([]lint.Issue, error) {
 	}
 
 	var potential []*ssa.Parameter
+funcLoop:
 	for fn := range ssautil.AllFunctions(c.prog) {
 		if fn.Pkg == nil { // builtin?
 			continue
@@ -115,6 +116,14 @@ func (c *Checker) Check() ([]lint.Issue, error) {
 		}
 		if dummyImpl(fn.Blocks[0]) { // panic implementation
 			continue
+		}
+		if refs := fn.Referrers(); refs != nil {
+			for _, instr := range *refs {
+				switch instr.(type) {
+				case *ssa.Store:
+					continue funcLoop
+				}
+			}
 		}
 		for i, par := range fn.Params {
 			if i == 0 && fn.Signature.Recv() != nil { // receiver

@@ -126,3 +126,24 @@ func AsSliceElem(f FooType) []int {
 }
 
 var SliceElems = []func(FooType) []int{AsSliceElem}
+
+func AnonType() {
+	for _, f := range []func(FooType, int32){
+		func(f FooType, i int32) {
+			doWork()
+			println(i)
+		},
+	} {
+		f(1, 2)
+	}
+	for _, f := range []struct {
+		f2 func(f FooType, i int64)
+	}{
+		{f2: func(f FooType, i int64) {
+			doWork()
+			println(i)
+		}},
+	} {
+		f.f2(3, 4)
+	}
+}

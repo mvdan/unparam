@@ -166,9 +166,6 @@ funcLoop:
 			c.funcSigns = make(map[string]bool)
 			c.seenTypes = make(map[types.Type]bool)
 			addSigns(pkg)
-			for _, imp := range tpkg.Imports() {
-				addSigns(c.prog.Package(imp))
-			}
 		}
 		sign := par.Parent().Signature
 		if c.funcSigns[c.signString(sign)] { // could be required

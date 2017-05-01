@@ -6,9 +6,7 @@
 package check
 
 import (
-	"bytes"
 	"fmt"
-	"go/ast"
 	"go/token"
 	"go/types"
 	"os"
@@ -38,13 +36,9 @@ type Checker struct {
 	lprog *loader.Program
 	prog  *ssa.Program
 
-	wd  string
-	buf bytes.Buffer
+	wd string
 
 	tests bool
-
-	funcSigns map[string]bool
-	seenTypes map[types.Type]bool
 }
 
 var (
@@ -154,18 +148,6 @@ funcLoop:
 		// the warnings for any package contiguously
 		if tpkg := pkg.Pkg; tpkg != curPkg {
 			curPkg = tpkg
-			c.funcSigns = make(map[string]bool)
-			c.seenTypes = make(map[types.Type]bool)
-			for _, mb := range pkg.Members {
-				if !ast.IsExported(mb.Name()) {
-					continue
-				}
-				c.addSign(mb.Type(), mb.Token() == token.FUNC)
-			}
-		}
-		sign := par.Parent().Signature
-		if c.funcSigns[c.signString(sign)] { // could be required
-			continue
 		}
 		issues = append(issues, Issue{
 			pos: par.Pos(),
@@ -180,54 +162,6 @@ type byPos []*ssa.Parameter
 func (p byPos) Len() int           { return len(p) }
 func (p byPos) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 func (p byPos) Less(i, j int) bool { return p[i].Pos() < p[j].Pos() }
-
-func (c *Checker) addSign(t types.Type, ignoreSign bool) {
-	if c.seenTypes[t] {
-		return
-	}
-	c.seenTypes[t] = true
-	switch x := t.(type) {
-	case *types.Signature:
-		params := x.Params()
-		if params.Len() == 0 {
-			break
-		}
-		if !ignoreSign { // otherwise funcs block themselves
-			c.funcSigns[c.signString(x)] = true
-		}
-		for i := 0; i < params.Len(); i++ {
-			c.addSign(params.At(i).Type(), false)
-		}
-	case *types.Struct:
-		for i := 0; i < x.NumFields(); i++ {
-			if !ast.IsExported(x.Field(i).Name()) {
-				continue
-			}
-			c.addSign(x.Field(i).Type(), false)
-		}
-	case *types.Named:
-		for i := 0; i < x.NumMethods(); i++ {
-			if !ast.IsExported(x.Method(i).Name()) {
-				continue
-			}
-			c.addSign(x.Method(i).Type(), true)
-		}
-		c.addSign(t.Underlying(), false)
-	case *types.Interface:
-		for i := 0; i < x.NumMethods(); i++ {
-			if !ast.IsExported(x.Method(i).Name()) {
-				continue
-			}
-			c.addSign(x.Method(i).Type(), false)
-		}
-	case withElem:
-		c.addSign(x.Elem(), false)
-	}
-}
-
-type withElem interface {
-	Elem() types.Type
-}
 
 var rxHarmlessCall = regexp.MustCompile(`(?i)\b(log(ger)?|errors)\b|\bf?print`)
 
@@ -270,24 +204,4 @@ func dummyImpl(blk *ssa.BasicBlock) bool {
 		}
 	}
 	return false
-}
-
-func tupleJoin(buf *bytes.Buffer, t *types.Tuple) {
-	buf.WriteByte('(')
-	for i := 0; i < t.Len(); i++ {
-		if i > 0 {
-			buf.WriteString(", ")
-		}
-		buf.WriteString(t.At(i).Type().String())
-	}
-	buf.WriteByte(')')
-}
-
-// signString is similar to Signature.String(), but it ignores
-// param/result names.
-func (c *Checker) signString(sign *types.Signature) string {
-	c.buf.Reset()
-	tupleJoin(&c.buf, sign.Params())
-	tupleJoin(&c.buf, sign.Results())
-	return c.buf.String()
 }

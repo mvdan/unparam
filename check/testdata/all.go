@@ -86,27 +86,9 @@ func NonConstImpl(f FooType, s string) error { return f }
 
 func LogImpl(f FooType) { log.Print("not implemented") }
 
-type Foo2Func func(a FooType, s string) int
-
-func Foo2Impl(a FooType, s string) int { return int(a) }
-
 func NoName(FooType) { doWork() }
 
 func UnderscoreName(_ FooType) { doWork() }
-
-type BarStruct struct {
-	Fn func(a FooType, b byte)
-}
-
-func BarField(a FooType, b byte) { doWork() }
-
-type Bar2Struct struct {
-	St struct {
-		fn func(a FooType, r rune)
-	}
-}
-
-func Bar2Field(a FooType, r rune) { doWork() }
 
 func FuncAsParam(fn func(FooType) string) { fn(0) }
 
@@ -125,13 +107,6 @@ func PassedAsParam2(f FooType) []byte {
 type RecursiveIface interface {
 	Foo(RecursiveIface)
 }
-
-func AsSliceElem(f FooType) []int {
-	doWork()
-	return nil
-}
-
-var SliceElems = []func(FooType) []int{AsSliceElem}
 
 func AnonType() {
 	for _, f := range []func(FooType, int32){

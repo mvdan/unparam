@@ -164,7 +164,30 @@ func UsedAsArg() {
 	})
 }
 
-func OneOverwritten(a FooType, i int8) (FooType, int8) {
+func globalParam(f func(f FooType, i int8)) {
+	f(7, 8)
+}
+
+func UsedAsGlobalArg(f FooType, i int8) {
+	doWork()
+	println(f)
+}
+
+func globalParamIface(v interface{}) {
+	println(v)
+}
+
+func UsedAsGlobalArgIface(f FooType, i int16) {
+	doWork()
+	println(f)
+}
+
+func GlobArgUse() {
+	globalParam(UsedAsGlobalArg)
+	globalParamIface(UsedAsGlobalArgIface)
+}
+
+func OneOverwritten(a FooType, i uint8) (FooType, uint8) {
 	i = 3
 	return a, i
 }

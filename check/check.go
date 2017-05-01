@@ -16,6 +16,7 @@ import (
 	"sort"
 	"strings"
 
+	"golang.org/x/tools/go/callgraph/cha"
 	"golang.org/x/tools/go/loader"
 	"golang.org/x/tools/go/ssa"
 	"golang.org/x/tools/go/ssa/ssautil"
@@ -101,6 +102,7 @@ func (c *Checker) Check() ([]lint.Issue, error) {
 	for _, info := range c.lprog.InitialPackages() {
 		wantPkg[info.Pkg] = true
 	}
+	cg := cha.CallGraph(c.prog)
 
 	var potential []*ssa.Parameter
 funcLoop:
@@ -117,17 +119,21 @@ funcLoop:
 		if dummyImpl(fn.Blocks[0]) { // panic implementation
 			continue
 		}
+		cn := cg.Nodes[fn]
+		for _, edge := range cn.In {
+			site := edge.Site
+			caller := edge.Caller.Func
+			for _, val := range caller.Params {
+				if val == site.Common().Value {
+					continue funcLoop
+				}
+			}
+		}
 		if refs := fn.Referrers(); refs != nil {
 			for _, instr := range *refs {
-				switch x := instr.(type) {
+				switch instr.(type) {
 				case *ssa.Store:
 					continue funcLoop
-				case *ssa.Call:
-					for _, val := range x.Call.Args {
-						if fn == val {
-							continue funcLoop
-						}
-					}
 				}
 			}
 		}

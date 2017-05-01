@@ -5,4 +5,5 @@ testdata/all.go:47:42: f is unused
 testdata/all.go:60:43: f is unused
 testdata/all.go:79:30: s is unused
 testdata/all.go:162:22: u is unused
+testdata/all.go:167:32: i is unused
 testdata/all_test.go:3:20: b is unused

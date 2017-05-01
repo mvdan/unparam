@@ -163,3 +163,8 @@ func UsedAsArg() {
 		println(f)
 	})
 }
+
+func OneOverwritten(a FooType, i int8) (FooType, int8) {
+	i = 3
+	return a, i
+}

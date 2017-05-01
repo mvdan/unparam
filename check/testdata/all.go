@@ -147,3 +147,19 @@ func AnonType() {
 		f.f2(3, 4)
 	}
 }
+
+func UsedAsArg() {
+	foo := func(f func(f FooType, u uint32)) {
+		f(5, 6)
+	}
+	bar := func(v interface{}) {
+		doWork()
+		println(v)
+	}
+	foo(func(f FooType, u uint32) {
+		println(f)
+	})
+	bar(func(f FooType, u uint64) {
+		println(f)
+	})
+}

@@ -119,9 +119,15 @@ funcLoop:
 		}
 		if refs := fn.Referrers(); refs != nil {
 			for _, instr := range *refs {
-				switch instr.(type) {
+				switch x := instr.(type) {
 				case *ssa.Store:
 					continue funcLoop
+				case *ssa.Call:
+					for _, val := range x.Call.Args {
+						if fn == val {
+							continue funcLoop
+						}
+					}
 				}
 			}
 		}

@@ -121,7 +121,8 @@ funcLoop:
 		}
 		for _, edge := range cg.Nodes[fn].In {
 			switch edge.Site.Common().Value.(type) {
-			case *ssa.Parameter, *ssa.UnOp:
+			case *ssa.Function:
+			default:
 				// called via a paramter or field, type
 				// is set in stone.
 				continue funcLoop

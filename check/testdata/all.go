@@ -191,3 +191,21 @@ func OneOverwritten(a FooType, i uint8) (FooType, uint8) {
 	i = 3
 	return a, i
 }
+
+type barIface interface {
+	bar(FooType, uint16)
+}
+
+type barType struct{}
+
+func (b *barType) bar(f FooType, u uint16) {
+	doWork()
+	println(f)
+}
+
+func barImpl() barIface { return &barType{} }
+
+func BarIfaceUse() {
+	b := barImpl()
+	b.bar(0, 1)
+}

@@ -31,9 +31,15 @@ type FooIface interface {
 	foo(w http.ResponseWriter, code FooType) error
 }
 
-func FooImpl(w http.ResponseWriter, code FooType) error {
+type FooMayImpl struct{}
+
+func (f FooMayImpl) foo(w http.ResponseWriter, code FooType) error {
 	w.Write([]byte("hi"))
 	return nil
+}
+
+func FooMayUse(f FooIface) {
+	f.foo(nil, 0)
 }
 
 func (f FooType) AllUsed(a FooType) FooType { return f + a }
@@ -80,22 +86,22 @@ func NonConstImpl(f FooType, s string) error { return f }
 
 func LogImpl(f FooType) { log.Print("not implemented") }
 
-type BarFunc func(a FooType, s string) int
+type Foo2Func func(a FooType, s string) int
 
-func BarImpl(a FooType, s string) int { return int(a) }
+func Foo2Impl(a FooType, s string) int { return int(a) }
 
 func NoName(FooType) { doWork() }
 
 func UnderscoreName(_ FooType) { doWork() }
 
 type BarStruct struct {
-	fn func(a FooType, b byte)
+	Fn func(a FooType, b byte)
 }
 
 func BarField(a FooType, b byte) { doWork() }
 
 type Bar2Struct struct {
-	st struct {
+	St struct {
 		fn func(a FooType, r rune)
 	}
 }

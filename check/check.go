@@ -146,15 +146,6 @@ funcLoop:
 	// TODO: replace by sort.Slice once we drop Go 1.7 support
 	sort.Sort(byPos(potential))
 
-	addSigns := func(pkg *ssa.Package) {
-		for _, mb := range pkg.Members {
-			if !ast.IsExported(mb.Name()) {
-				continue
-			}
-			c.addSign(mb.Type(), mb.Token() == token.FUNC)
-		}
-	}
-
 	var curPkg *types.Package
 	issues := make([]lint.Issue, 0, len(potential))
 	for _, par := range potential {
@@ -165,7 +156,12 @@ funcLoop:
 			curPkg = tpkg
 			c.funcSigns = make(map[string]bool)
 			c.seenTypes = make(map[types.Type]bool)
-			addSigns(pkg)
+			for _, mb := range pkg.Members {
+				if !ast.IsExported(mb.Name()) {
+					continue
+				}
+				c.addSign(mb.Type(), mb.Token() == token.FUNC)
+			}
 		}
 		sign := par.Parent().Signature
 		if c.funcSigns[c.signString(sign)] { // could be required
@@ -204,15 +200,24 @@ func (c *Checker) addSign(t types.Type, ignoreSign bool) {
 		}
 	case *types.Struct:
 		for i := 0; i < x.NumFields(); i++ {
+			if !ast.IsExported(x.Field(i).Name()) {
+				continue
+			}
 			c.addSign(x.Field(i).Type(), false)
 		}
 	case *types.Named:
 		for i := 0; i < x.NumMethods(); i++ {
+			if !ast.IsExported(x.Method(i).Name()) {
+				continue
+			}
 			c.addSign(x.Method(i).Type(), true)
 		}
 		c.addSign(t.Underlying(), false)
 	case *types.Interface:
 		for i := 0; i < x.NumMethods(); i++ {
+			if !ast.IsExported(x.Method(i).Name()) {
+				continue
+			}
 			c.addSign(x.Method(i).Type(), false)
 		}
 	case withElem:

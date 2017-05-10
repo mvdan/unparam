@@ -117,7 +117,7 @@ funcLoop:
 			switch edge.Site.Common().Value.(type) {
 			case *ssa.Function:
 			default:
-				// called via a paramter or field, type
+				// called via a parameter or field, type
 				// is set in stone.
 				continue funcLoop
 			}

@@ -98,7 +98,7 @@ func (c *Checker) Check() ([]lint.Issue, error) {
 	}
 	cg := cha.CallGraph(c.prog)
 
-	var params []*ssa.Parameter
+	var issues []lint.Issue
 funcLoop:
 	for fn := range ssautil.AllFunctions(c.prog) {
 		if fn.Pkg == nil { // builtin?
@@ -133,31 +133,19 @@ funcLoop:
 			if len(*par.Referrers()) > 0 { // used
 				continue
 			}
-			params = append(params, par)
+			issues = append(issues, Issue{
+				pos: par.Pos(),
+				msg: fmt.Sprintf("%s is unused", par.Name()),
+			})
 		}
 
 	}
 	// TODO: replace by sort.Slice once we drop Go 1.7 support
-	sort.Sort(byPos(params))
-
-	var curPkg *types.Package
-	issues := make([]lint.Issue, 0, len(params))
-	for _, par := range params {
-		pkg := par.Parent().Pkg
-		// since they are sorted by position, we will see all
-		// the warnings for any package contiguously
-		if tpkg := pkg.Pkg; tpkg != curPkg {
-			curPkg = tpkg
-		}
-		issues = append(issues, Issue{
-			pos: par.Pos(),
-			msg: fmt.Sprintf("%s is unused", par.Name()),
-		})
-	}
+	sort.Sort(byPos(issues))
 	return issues, nil
 }
 
-type byPos []*ssa.Parameter
+type byPos []lint.Issue
 
 func (p byPos) Len() int           { return len(p) }
 func (p byPos) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }

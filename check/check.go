@@ -98,7 +98,7 @@ func (c *Checker) Check() ([]lint.Issue, error) {
 	}
 	cg := cha.CallGraph(c.prog)
 
-	var potential []*ssa.Parameter
+	var params []*ssa.Parameter
 funcLoop:
 	for fn := range ssautil.AllFunctions(c.prog) {
 		if fn.Pkg == nil { // builtin?
@@ -133,16 +133,16 @@ funcLoop:
 			if len(*par.Referrers()) > 0 { // used
 				continue
 			}
-			potential = append(potential, par)
+			params = append(params, par)
 		}
 
 	}
 	// TODO: replace by sort.Slice once we drop Go 1.7 support
-	sort.Sort(byPos(potential))
+	sort.Sort(byPos(params))
 
 	var curPkg *types.Package
-	issues := make([]lint.Issue, 0, len(potential))
-	for _, par := range potential {
+	issues := make([]lint.Issue, 0, len(params))
+	for _, par := range params {
 		pkg := par.Parent().Pkg
 		// since they are sorted by position, we will see all
 		// the warnings for any package contiguously

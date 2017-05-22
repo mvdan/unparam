@@ -7,4 +7,5 @@ testdata/all.go:85:30: s is unused
 testdata/all.go:143:22: u is unused
 testdata/all.go:161:38: i is unused
 testdata/all.go:171:32: i is unused
+testdata/all.go:194:24: f is unused
 testdata/all_test.go:3:20: b is unused

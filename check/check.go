@@ -130,7 +130,7 @@ funcLoop:
 			case "", "_": // unnamed
 				continue
 			}
-			if len(*par.Referrers()) > 0 { // used
+			if anyRealUse(par, i) {
 				continue
 			}
 			issues = append(issues, Issue{
@@ -150,6 +150,33 @@ type byPos []lint.Issue
 func (p byPos) Len() int           { return len(p) }
 func (p byPos) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 func (p byPos) Less(i, j int) bool { return p[i].Pos() < p[j].Pos() }
+
+func anyRealUse(par *ssa.Parameter, pos int) bool {
+	refLoop:
+	for _, ref := range *par.Referrers() {
+		call, ok := ref.(*ssa.Call)
+		if !ok {
+			return true
+		}
+		if call.Call.Value != par.Parent() {
+			return true // not a recursive call
+		}
+		for i, arg := range call.Call.Args {
+			if arg == call.Call.Value {
+				continue // reused as receiver
+			}
+			if arg != par {
+				continue
+			}
+			if i == pos {
+				// reused directly in a recursive call
+				continue refLoop
+			}
+		}
+		return true
+	}
+	return false
+}
 
 var rxHarmlessCall = regexp.MustCompile(`(?i)\b(log(ger)?|errors)\b|\bf?print`)
 

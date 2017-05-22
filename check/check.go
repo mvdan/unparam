@@ -152,7 +152,7 @@ func (p byPos) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 func (p byPos) Less(i, j int) bool { return p[i].Pos() < p[j].Pos() }
 
 func anyRealUse(par *ssa.Parameter, pos int) bool {
-	refLoop:
+refLoop:
 	for _, ref := range *par.Referrers() {
 		call, ok := ref.(*ssa.Call)
 		if !ok {

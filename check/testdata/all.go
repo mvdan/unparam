@@ -211,3 +211,14 @@ func ReusedRecursivelyModified(f FooType, b bool) rune {
 	}
 	return ReusedRecursivelyModified(f+FooType(1), b)
 }
+
+func UnusedVariadic(a FooType, bs ...byte) {
+	doWork()
+	println(a)
+}
+
+func ReusedRecursivelyVariadic(a FooType, bs ...byte) {
+	if a == 0 {
+		ReusedRecursivelyVariadic(a, bs...)
+	}
+}

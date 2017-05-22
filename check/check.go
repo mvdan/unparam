@@ -135,7 +135,7 @@ funcLoop:
 			}
 			reason := "is unused"
 			if cv := receivesSameValue(cg.Nodes[fn].In, par, i); cv != nil {
-				reason = fmt.Sprintf("always recieves %v", cv)
+				reason = fmt.Sprintf("always receives %v", cv)
 			} else if anyRealUse(par, i) {
 				continue
 			}

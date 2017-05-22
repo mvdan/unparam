@@ -10,5 +10,5 @@ testdata/all.go:172:32: i is unused
 testdata/all.go:195:24: f is unused
 testdata/all.go:216:32: bs is unused
 testdata/all.go:221:43: bs is unused
-testdata/all.go:227:19: r always recieves 97
+testdata/all.go:227:19: r always receives 97
 testdata/all_test.go:3:20: b is unused

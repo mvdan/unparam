@@ -7,6 +7,8 @@ package check
 
 import (
 	"fmt"
+	"go/ast"
+	"go/constant"
 	"go/token"
 	"go/types"
 	"os"
@@ -14,6 +16,7 @@ import (
 	"sort"
 	"strings"
 
+	"golang.org/x/tools/go/callgraph"
 	"golang.org/x/tools/go/callgraph/cha"
 	"golang.org/x/tools/go/loader"
 	"golang.org/x/tools/go/ssa"
@@ -130,12 +133,15 @@ funcLoop:
 			case "", "_": // unnamed
 				continue
 			}
-			if anyRealUse(par, i) {
+			reason := "is unused"
+			if cv := receivesSameValue(cg.Nodes[fn].In, par, i); cv != nil {
+				reason = fmt.Sprintf("always recieves %v", cv)
+			} else if anyRealUse(par, i) {
 				continue
 			}
 			issues = append(issues, Issue{
 				pos: par.Pos(),
-				msg: fmt.Sprintf("%s is unused", par.Name()),
+				msg: fmt.Sprintf("%s %s", par.Name(), reason),
 			})
 		}
 
@@ -150,6 +156,27 @@ type byPos []lint.Issue
 func (p byPos) Len() int           { return len(p) }
 func (p byPos) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 func (p byPos) Less(i, j int) bool { return p[i].Pos() < p[j].Pos() }
+
+func receivesSameValue(in []*callgraph.Edge, par *ssa.Parameter, pos int) constant.Value {
+	if ast.IsExported(par.Parent().Name()) {
+		// we might not have all call sites for an exported func
+		return nil
+	}
+	var seen constant.Value
+	for _, edge := range in {
+		call := edge.Site.Common()
+		cnst, ok := call.Args[pos].(*ssa.Const)
+		if !ok {
+			return nil // not a constant
+		}
+		if seen == nil {
+			seen = cnst.Value // first constant
+		} else if !constant.Compare(seen, token.EQL, cnst.Value) {
+			return nil // different constants
+		}
+	}
+	return seen
+}
 
 func anyRealUse(par *ssa.Parameter, pos int) bool {
 refLoop:

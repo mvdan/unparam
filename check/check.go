@@ -200,9 +200,6 @@ refLoop:
 			return true // not a recursive call
 		}
 		for i, arg := range call.Call.Args {
-			if arg == call.Call.Value {
-				continue // reused as receiver
-			}
 			if arg != par {
 				continue
 			}

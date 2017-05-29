@@ -1,3 +1,5 @@
+testdata/all_main.go:5:23: b is unused
+testdata/all_main.go:22:22: f is unused
 testdata/all.go:14:19: b is unused
 testdata/all.go:21:20: f is unused
 testdata/all.go:48:28: a is unused

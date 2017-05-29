@@ -9,9 +9,11 @@ import (
 	"fmt"
 	"go/ast"
 	"go/constant"
+	"go/parser"
 	"go/token"
 	"go/types"
 	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -31,7 +33,10 @@ func UnusedParams(tests bool, args ...string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	c := &Checker{wd: wd, tests: tests}
+	c := &Checker{
+		wd: wd, tests: tests,
+		cachedDeclCounts: make(map[string]map[string]int),
+	}
 	return c.lines(args...)
 }
 
@@ -42,6 +47,8 @@ type Checker struct {
 	wd string
 
 	tests bool
+
+	cachedDeclCounts map[string]map[string]int
 }
 
 var (
@@ -95,9 +102,9 @@ func (c *Checker) ProgramSSA(prog *ssa.Program) {
 }
 
 func (c *Checker) Check() ([]lint.Issue, error) {
-	wantPkg := make(map[*types.Package]bool)
+	wantPkg := make(map[*types.Package]*loader.PackageInfo)
 	for _, info := range c.lprog.InitialPackages() {
-		wantPkg[info.Pkg] = true
+		wantPkg[info.Pkg] = info
 	}
 	cg := cha.CallGraph(c.prog)
 
@@ -110,7 +117,8 @@ funcLoop:
 		if len(fn.Blocks) == 0 { // stub
 			continue
 		}
-		if !wantPkg[fn.Pkg.Pkg] { // not part of given pkgs
+		info := wantPkg[fn.Pkg.Pkg]
+		if info == nil { // not part of given pkgs
 			continue
 		}
 		if dummyImpl(fn.Blocks[0]) { // panic implementation
@@ -124,6 +132,9 @@ funcLoop:
 				// is set in stone.
 				continue funcLoop
 			}
+		}
+		if c.multipleImpls(info, fn) {
+			continue
 		}
 		for i, par := range fn.Params {
 			if i == 0 && fn.Signature.Recv() != nil { // receiver
@@ -246,4 +257,71 @@ func dummyImpl(blk *ssa.BasicBlock) bool {
 		}
 	}
 	return false
+}
+
+func (c *Checker) declCounts(pkgDir string, pkgName string) map[string]int {
+	if m := c.cachedDeclCounts[pkgDir]; m != nil {
+		return m
+	}
+	fset := token.NewFileSet()
+	pkgs, err := parser.ParseDir(fset, pkgDir, nil, 0)
+	if err != nil {
+		panic(err.Error())
+		return nil
+	}
+	pkg := pkgs[pkgName]
+	count := make(map[string]int)
+	for _, file := range pkg.Files {
+		for _, decl := range file.Decls {
+			fd, _ := decl.(*ast.FuncDecl)
+			if fd == nil {
+				continue
+			}
+			name := astPrefix(fd.Recv) + fd.Name.Name
+			count[name]++
+		}
+	}
+	c.cachedDeclCounts[pkgDir] = count
+	return count
+}
+
+func astPrefix(recv *ast.FieldList) string {
+	if recv == nil {
+		return ""
+	}
+	expr := recv.List[0].Type
+	for {
+		star, _ := expr.(*ast.StarExpr)
+		if star == nil {
+			break
+		}
+		expr = star.X
+	}
+	id := expr.(*ast.Ident)
+	return id.Name + "."
+}
+
+func (c *Checker) multipleImpls(info *loader.PackageInfo, fn *ssa.Function) bool {
+	if fn.Parent() != nil { // nested func
+		return false
+	}
+	path := c.prog.Fset.Position(fn.Pos()).Filename
+	if path == "" { // generated func, like init
+		return false
+	}
+	count := c.declCounts(filepath.Dir(path), info.Pkg.Name())
+	name := fn.Name()
+	if fn.Signature.Recv() != nil {
+		tp := fn.Params[0].Type()
+		for {
+			point, _ := tp.(*types.Pointer)
+			if point == nil {
+				break
+			}
+			tp = point.Elem()
+		}
+		named := tp.(*types.Named)
+		name = named.Obj().Name() + "." + name
+	}
+	return count[name] > 1
 }

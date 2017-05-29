@@ -91,6 +91,8 @@ func NoName(FooType) { doWork() }
 
 func UnderscoreName(_ FooType) { doWork() }
 
+func DummyName(dummy FooType) { doWork() }
+
 func FuncAsParam(fn func(FooType) string) { fn(0) }
 
 func PassedAsParam(f FooType) string {

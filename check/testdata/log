@@ -6,11 +6,11 @@ testdata/all.go:48:28: a is unused
 testdata/all.go:54:42: f is unused
 testdata/all.go:67:43: f is unused
 testdata/all.go:86:30: s is unused
-testdata/all.go:146:22: u is unused
-testdata/all.go:164:38: i is unused
-testdata/all.go:174:32: i is unused
-testdata/all.go:197:24: f is unused
-testdata/all.go:218:32: bs is unused
-testdata/all.go:223:43: bs is unused
-testdata/all.go:229:19: r always receives 97
+testdata/all.go:144:22: u is unused
+testdata/all.go:162:38: i is unused
+testdata/all.go:172:32: i is unused
+testdata/all.go:195:24: f is unused
+testdata/all.go:216:32: bs is unused
+testdata/all.go:221:43: bs is unused
+testdata/all.go:227:19: r always receives 97
 testdata/all_test.go:3:20: b is unused

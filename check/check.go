@@ -141,7 +141,7 @@ funcLoop:
 				continue
 			}
 			switch par.Object().Name() {
-			case "", "_", "dummy": // unnamed or dummy names
+			case "", "_": // unnamed
 				continue
 			}
 			reason := "is unused"

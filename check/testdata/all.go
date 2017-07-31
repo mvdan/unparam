@@ -7,15 +7,9 @@ import (
 	"net/http"
 )
 
-type FooType int
-
 func AllUsed(a, b FooType) FooType { return a + b }
 
 func OneUnused(a, b FooType) FooType { return a }
-
-func doWork() {}
-
-var Sink interface{}
 
 func Parent() {
 	oneUnused := func(f FooType) {

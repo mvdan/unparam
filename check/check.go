@@ -257,7 +257,9 @@ func insertedStore(instr ssa.Instruction) bool {
 		return false
 	}
 	alloc, ok := store.Addr.(*ssa.Alloc)
-	return ok && !alloc.Heap
+	// we want exactly one use of this alloc value for it to be
+	// inserted by ssa and dummy - the alloc instruction itself.
+	return ok && len(*alloc.Referrers()) == 1
 }
 
 var rxHarmlessCall = regexp.MustCompile(`(?i)\b(log(ger)?|errors)\b|\bf?print`)

@@ -237,7 +237,7 @@ refLoop:
 			}
 			return true
 		case *ssa.Store:
-			if x.Pos() == token.NoPos {
+			if insertedStore(x) {
 				continue // inserted by go/ssa, not from the code
 			}
 			return true
@@ -248,6 +248,18 @@ refLoop:
 	return false
 }
 
+func insertedStore(instr ssa.Instruction) bool {
+	if instr.Pos() != token.NoPos {
+		return false
+	}
+	store, ok := instr.(*ssa.Store)
+	if !ok {
+		return false
+	}
+	alloc, ok := store.Addr.(*ssa.Alloc)
+	return ok && !alloc.Heap
+}
+
 var rxHarmlessCall = regexp.MustCompile(`(?i)\b(log(ger)?|errors)\b|\bf?print`)
 
 // dummyImpl reports whether a block is a dummy implementation. This is
@@ -256,7 +268,7 @@ var rxHarmlessCall = regexp.MustCompile(`(?i)\b(log(ger)?|errors)\b|\bf?print`)
 func dummyImpl(blk *ssa.BasicBlock) bool {
 	var ops [8]*ssa.Value
 	for _, instr := range blk.Instrs {
-		if _, ok := instr.(*ssa.Store); ok && instr.Pos() == token.NoPos {
+		if insertedStore(instr) {
 			continue // inserted by go/ssa, not from the code
 		}
 		for _, val := range instr.Operands(ops[:0]) {

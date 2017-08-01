@@ -12,6 +12,7 @@ import (
 	"go/parser"
 	"go/token"
 	"go/types"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -28,14 +29,18 @@ import (
 	"github.com/mvdan/lint"
 )
 
-func UnusedParams(tests bool, args ...string) ([]string, error) {
+func UnusedParams(tests, debug bool, args ...string) ([]string, error) {
 	wd, err := os.Getwd()
 	if err != nil {
 		return nil, err
 	}
 	c := &Checker{
-		wd: wd, tests: tests,
+		wd:               wd,
+		tests:            tests,
 		cachedDeclCounts: make(map[string]map[string]int),
+	}
+	if debug {
+		c.debugLog = os.Stderr
 	}
 	return c.lines(args...)
 }
@@ -46,7 +51,8 @@ type Checker struct {
 
 	wd string
 
-	tests bool
+	tests    bool
+	debugLog io.Writer
 
 	cachedDeclCounts map[string]map[string]int
 }
@@ -101,6 +107,12 @@ func (c *Checker) ProgramSSA(prog *ssa.Program) {
 	c.prog = prog
 }
 
+func (c *Checker) debug(format string, a ...interface{}) {
+	if c.debugLog != nil {
+		fmt.Fprintf(c.debugLog, format, a...)
+	}
+}
+
 func (c *Checker) Check() ([]lint.Issue, error) {
 	wantPkg := make(map[*types.Package]*loader.PackageInfo)
 	for _, info := range c.lprog.InitialPackages() {
@@ -121,7 +133,9 @@ funcLoop:
 		if info == nil { // not part of given pkgs
 			continue
 		}
+		c.debug("func %s\n", fn.String())
 		if dummyImpl(fn.Blocks[0]) { // panic implementation
+			c.debug("  skip - dummy implementation\n")
 			continue
 		}
 		for _, edge := range cg.Nodes[fn].In {
@@ -130,24 +144,29 @@ funcLoop:
 			default:
 				// called via a parameter or field, type
 				// is set in stone.
+				c.debug("  skip - type is required via call\n")
 				continue funcLoop
 			}
 		}
 		if c.multipleImpls(info, fn) {
+			c.debug("  skip - multiple implementations via build tags\n")
 			continue
 		}
 		for i, par := range fn.Params {
 			if i == 0 && fn.Signature.Recv() != nil { // receiver
 				continue
 			}
+			c.debug("%s\n", par.String())
 			switch par.Object().Name() {
 			case "", "_": // unnamed
+				c.debug("  skip - unnamed\n")
 				continue
 			}
 			reason := "is unused"
 			if cv := receivesSameValue(cg.Nodes[fn].In, par, i); cv != nil {
 				reason = fmt.Sprintf("always receives %v", cv)
 			} else if anyRealUse(par, i) {
+				c.debug("  skip - used somewhere in the func body\n")
 				continue
 			}
 			issues = append(issues, Issue{

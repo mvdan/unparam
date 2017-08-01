@@ -238,7 +238,7 @@ refLoop:
 			return true
 		case *ssa.Store:
 			if x.Pos() == token.NoPos {
-				continue
+				continue // inserted by go/ssa, not from the code
 			}
 			return true
 		default:
@@ -256,11 +256,15 @@ var rxHarmlessCall = regexp.MustCompile(`(?i)\b(log(ger)?|errors)\b|\bf?print`)
 func dummyImpl(blk *ssa.BasicBlock) bool {
 	var ops [8]*ssa.Value
 	for _, instr := range blk.Instrs {
+		if _, ok := instr.(*ssa.Store); ok && instr.Pos() == token.NoPos {
+			continue // inserted by go/ssa, not from the code
+		}
 		for _, val := range instr.Operands(ops[:0]) {
 			switch x := (*val).(type) {
 			case nil, *ssa.Const, *ssa.ChangeType, *ssa.Alloc,
 				*ssa.MakeInterface, *ssa.Function,
-				*ssa.Global, *ssa.IndexAddr, *ssa.Slice:
+				*ssa.Global, *ssa.IndexAddr, *ssa.Slice,
+				*ssa.UnOp:
 			case *ssa.Call:
 				if rxHarmlessCall.MatchString(x.Call.Value.String()) {
 					continue

@@ -50,3 +50,7 @@ func OneOverwritten(a FooType, i uint8) (FooType, uint8) {
 	i = 3
 	return a, i
 }
+
+func ZeroStructImpl(f FooStruct) FooStruct {
+	return FooStruct{}
+}

@@ -11,10 +11,13 @@ import (
 	"testing"
 )
 
-var write = flag.Bool("w", false, "write test outputs")
+var (
+	write = flag.Bool("w", false, "write test outputs")
+	debug = flag.Bool("debug", false, "debug prints")
+)
 
 func TestUnusedParams(t *testing.T) {
-	warns, err := UnusedParams(true, "./testdata")
+	warns, err := UnusedParams(true, *debug, "./testdata")
 	if err != nil {
 		t.Fatal(err)
 	}

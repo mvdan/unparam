@@ -221,23 +221,29 @@ func receivesSameValue(in []*callgraph.Edge, par *ssa.Parameter, pos int) consta
 func anyRealUse(par *ssa.Parameter, pos int) bool {
 refLoop:
 	for _, ref := range *par.Referrers() {
-		call, ok := ref.(*ssa.Call)
-		if !ok {
+		switch x := ref.(type) {
+		case *ssa.Call:
+			if x.Call.Value != par.Parent() {
+				return true // not a recursive call
+			}
+			for i, arg := range x.Call.Args {
+				if arg != par {
+					continue
+				}
+				if i == pos {
+					// reused directly in a recursive call
+					continue refLoop
+				}
+			}
 			return true
-		}
-		if call.Call.Value != par.Parent() {
-			return true // not a recursive call
-		}
-		for i, arg := range call.Call.Args {
-			if arg != par {
+		case *ssa.Store:
+			if x.Pos() == token.NoPos {
 				continue
 			}
-			if i == pos {
-				// reused directly in a recursive call
-				continue refLoop
-			}
+			return true
+		default:
+			return true
 		}
-		return true
 	}
 	return false
 }

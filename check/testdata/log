@@ -4,6 +4,7 @@ testdata/reused.go:3:24: f is unused
 testdata/reused.go:24:32: bs is unused
 testdata/reused.go:29:43: bs is unused
 testdata/simple.go:5:19: b is unused
+testdata/simple.go:7:19: f is unused
 testdata/simple_test.go:3:20: b is unused
 testdata/stubs.go:13:42: f is unused
 testdata/stubs.go:30:43: f is unused

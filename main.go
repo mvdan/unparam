@@ -17,6 +17,10 @@ var (
 )
 
 func main() {
+	flag.Usage = func() {
+		fmt.Fprintln(os.Stderr, "usage: unparam [flags] [package ...]")
+		flag.PrintDefaults()
+	}
 	flag.Parse()
 	warns, err := check.UnusedParams(*tests, *debug, flag.Args()...)
 	if err != nil {

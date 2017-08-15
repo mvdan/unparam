@@ -152,6 +152,31 @@ funcLoop:
 			c.debug("  skip - multiple implementations via build tags\n")
 			continue
 		}
+
+		callers := cg.Nodes[fn].In
+		// skip exported funcs, as well as those that are
+		// entirely unused
+		if !ast.IsExported(fn.Name()) && len(callers) > 0 {
+			results := fn.Signature.Results()
+		resLoop:
+			for i := 0; i < results.Len(); i++ {
+				for _, edge := range callers {
+					if len(*edge.Site.Value().Referrers()) > 0 {
+						continue resLoop
+					}
+				}
+				res := results.At(i)
+				name := res.Name()
+				if name == "" {
+					name = fmt.Sprintf("%d (%s)", i, res.Type().String())
+				}
+				issues = append(issues, Issue{
+					pos: res.Pos(),
+					msg: fmt.Sprintf("result %s %s", name, "is always unused"),
+				})
+			}
+		}
+
 		for i, par := range fn.Params {
 			if i == 0 && fn.Signature.Recv() != nil { // receiver
 				continue

@@ -161,7 +161,11 @@ funcLoop:
 		resLoop:
 			for i := 0; i < results.Len(); i++ {
 				for _, edge := range callers {
-					for _, instr := range *edge.Site.Value().Referrers() {
+					val := edge.Site.Value()
+					if val == nil { // e.g. go statement
+						continue
+					}
+					for _, instr := range *val.Referrers() {
 						extract, ok := instr.(*ssa.Extract)
 						if !ok {
 							continue resLoop // direct, real use

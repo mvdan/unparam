@@ -1,6 +1,9 @@
 testdata/funclit.go:4:20: f is unused
 testdata/ignoredrets.go:3:22: result 0 (rune) is always unused
 testdata/ignoredrets.go:24:27: result r is always unused
+testdata/ignoredrets.go:34:20: result 0 (int) is always unused
+testdata/ignoredrets.go:34:25: result 1 (string) is always unused
+testdata/ignoredrets.go:44:26: result 1 (string) is always unused
 testdata/methods.go:5:28: a is unused
 testdata/reused.go:3:24: f is unused
 testdata/reused.go:24:32: bs is unused

@@ -161,8 +161,17 @@ funcLoop:
 		resLoop:
 			for i := 0; i < results.Len(); i++ {
 				for _, edge := range callers {
-					if len(*edge.Site.Value().Referrers()) > 0 {
-						continue resLoop
+					for _, instr := range *edge.Site.Value().Referrers() {
+						extract, ok := instr.(*ssa.Extract)
+						if !ok {
+							continue resLoop // direct, real use
+						}
+						if extract.Index != i {
+							continue // not the same result param
+						}
+						if len(*extract.Referrers()) > 0 {
+							continue resLoop // real use after extraction
+						}
 					}
 				}
 				res := results.At(i)

@@ -1,14 +1,14 @@
 // Copyright (c) 2017, Daniel Martí <mvdan@mvdan.cc>
 // See LICENSE for licensing information
 
-package main
+package main // import "mvdan.cc/unparam"
 
 import (
 	"flag"
 	"fmt"
 	"os"
 
-	"github.com/mvdan/unparam/check"
+	"mvdan.cc/unparam/check"
 )
 
 var (

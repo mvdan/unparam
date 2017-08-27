@@ -4,5 +4,7 @@ go:
   - 1.7.x
   - 1.8.x
 
+go_import_path: mvdan.cc/unparam
+
 script:
   - go test -v ./...

@@ -3,7 +3,7 @@
 
 // Package check implements the unparam linter. Note that its API is not
 // stable.
-package check
+package check // import "mvdan.cc/unparam/check"
 
 import (
 	"fmt"

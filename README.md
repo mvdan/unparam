@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.org/mvdan/unparam.svg?branch=master)](https://travis-ci.org/mvdan/unparam)
 
-	go get -u github.com/mvdan/unparam
+	go get -u mvdan.cc/unparam
 
 Reports unused function parameters in your code.
 

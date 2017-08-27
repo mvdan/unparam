@@ -35,9 +35,8 @@ func UnusedParams(tests, debug bool, args ...string) ([]string, error) {
 		return nil, err
 	}
 	c := &Checker{
-		wd:               wd,
-		tests:            tests,
-		cachedDeclCounts: make(map[string]map[string]int),
+		wd:    wd,
+		tests: tests,
 	}
 	if debug {
 		c.debugLog = os.Stderr
@@ -114,6 +113,7 @@ func (c *Checker) debug(format string, a ...interface{}) {
 }
 
 func (c *Checker) Check() ([]lint.Issue, error) {
+	c.cachedDeclCounts = make(map[string]map[string]int)
 	wantPkg := make(map[*types.Package]*loader.PackageInfo)
 	for _, info := range c.lprog.InitialPackages() {
 		wantPkg[info.Pkg] = info

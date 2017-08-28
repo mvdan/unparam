@@ -26,7 +26,7 @@ import (
 	"golang.org/x/tools/go/ssa/ssautil"
 
 	"github.com/kisielk/gotool"
-	"github.com/mvdan/lint"
+	"mvdan.cc/lint"
 )
 
 func UnusedParams(tests, debug bool, args ...string) ([]string, error) {

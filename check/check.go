@@ -181,10 +181,7 @@ funcLoop:
 					}
 				}
 				res := results.At(i)
-				name := res.Name()
-				if name == "" {
-					name = fmt.Sprintf("%d (%s)", i, res.Type().String())
-				}
+				name := paramDesc(i, res)
 				issues = append(issues, Issue{
 					pos: res.Pos(),
 					msg: fmt.Sprintf("result %s is never used", name),
@@ -220,10 +217,7 @@ funcLoop:
 					continue
 				}
 				res := results.At(i)
-				name := res.Name()
-				if name == "" {
-					name = fmt.Sprintf("%d (%s)", i, res.Type().String())
-				}
+				name := paramDesc(i, res)
 				issues = append(issues, Issue{
 					pos: res.Pos(),
 					msg: fmt.Sprintf("result %s is always %s", name, val.String()),
@@ -453,4 +447,12 @@ func (c *Checker) multipleImpls(info *loader.PackageInfo, fn *ssa.Function) bool
 		name = named.Obj().Name() + "." + name
 	}
 	return count[name] > 1
+}
+
+func paramDesc(i int, v *types.Var) string {
+	name := v.Name()
+	if name != "" {
+		return name
+	}
+	return fmt.Sprintf("%d (%s)", i, v.Type().String())
 }

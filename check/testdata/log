@@ -1,13 +1,16 @@
 testdata/funclit.go:4:20: f is unused
-testdata/ignoredrets.go:3:22: result 0 (rune) is always unused
-testdata/ignoredrets.go:24:27: result r is always unused
-testdata/ignoredrets.go:34:20: result 0 (int) is always unused
-testdata/ignoredrets.go:34:25: result 1 (string) is always unused
-testdata/ignoredrets.go:44:26: result 1 (string) is always unused
+testdata/ignoredrets.go:3:22: result 0 (rune) is never used
+testdata/ignoredrets.go:24:27: result r is never used
+testdata/ignoredrets.go:34:20: result 0 (int) is never used
+testdata/ignoredrets.go:34:25: result 1 (string) is never used
+testdata/ignoredrets.go:44:26: result 1 (string) is never used
 testdata/methods.go:5:28: a is unused
 testdata/reused.go:3:24: f is unused
 testdata/reused.go:24:32: bs is unused
 testdata/reused.go:29:43: bs is unused
+testdata/samerets.go:8:20: result 0 (int) is always 3
+testdata/samerets.go:26:29: result b is always true
+testdata/samerets.go:26:37: result s is always "foo"
 testdata/simple.go:5:19: b is unused
 testdata/simple.go:7:19: f is unused
 testdata/simple_test.go:3:20: b is unused

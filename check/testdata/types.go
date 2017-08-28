@@ -7,3 +7,5 @@ type FooStruct struct{}
 func doWork() {}
 
 var Sink interface{}
+
+var cond bool

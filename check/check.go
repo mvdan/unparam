@@ -59,6 +59,8 @@ type Checker struct {
 var (
 	_ lint.Checker = (*Checker)(nil)
 	_ lint.WithSSA = (*Checker)(nil)
+
+	skipValue = new(ssa.Value)
 )
 
 func (c *Checker) lines(args ...string) ([]string, error) {
@@ -154,10 +156,10 @@ funcLoop:
 		}
 
 		callers := cg.Nodes[fn].In
+		results := fn.Signature.Results()
 		// skip exported funcs, as well as those that are
 		// entirely unused
 		if !ast.IsExported(fn.Name()) && len(callers) > 0 {
-			results := fn.Signature.Results()
 		resLoop:
 			for i := 0; i < results.Len(); i++ {
 				for _, edge := range callers {
@@ -185,7 +187,46 @@ funcLoop:
 				}
 				issues = append(issues, Issue{
 					pos: res.Pos(),
-					msg: fmt.Sprintf("result %s %s", name, "is always unused"),
+					msg: fmt.Sprintf("result %s is never used", name),
+				})
+			}
+		}
+
+		seen := make([]constant.Value, results.Len())
+		numRets := 0
+		for _, block := range fn.Blocks {
+			last := block.Instrs[len(block.Instrs)-1]
+			ret, ok := last.(*ssa.Return)
+			if !ok {
+				continue
+			}
+			for i, val := range ret.Results {
+				cnst, ok := val.(*ssa.Const)
+				switch {
+				case !ok:
+					seen[i] = nil
+				case numRets == 0:
+					seen[i] = cnst.Value
+				case seen[i] == nil:
+				case !constant.Compare(seen[i], token.EQL, cnst.Value):
+					seen[i] = nil
+				}
+			}
+			numRets++
+		}
+		if numRets > 1 {
+			for i, val := range seen {
+				if val == nil {
+					continue
+				}
+				res := results.At(i)
+				name := res.Name()
+				if name == "" {
+					name = fmt.Sprintf("%d (%s)", i, res.Type().String())
+				}
+				issues = append(issues, Issue{
+					pos: res.Pos(),
+					msg: fmt.Sprintf("result %s is always %s", name, val.String()),
 				})
 			}
 		}

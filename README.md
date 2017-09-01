@@ -4,19 +4,17 @@
 
 	go get -u mvdan.cc/unparam
 
-Reports unused function parameters in your code.
+Reports unused function parameters and results in your code.
+
+It also reports parameters that always receive the same values, results
+that always return the same values and results that are never used.
 
 To minimise false positives, it ignores:
 
 * Unnamed and underscore parameters
-* Funcs whose signature matches a reachable func type
-* Funcs whose signature matches a reachable interface method
-* Funcs that have empty bodies
-* Funcs that will almost immediately panic or return constants
+* Funcs that may satisfy an interface
+* Funcs that may satisfy a function signature
+* Funcs that are stubs (empty, only error, only return constants, etc)
 
 False positives can still occur by design. The aim of the tool is to be
-as precise as possible - if you find any, file a bug.
-
-Note that "reachable" means func signatures found in top-level
-declarations in each package and all of its direct dependencies. The
-tool ignores transitive dependencies and local signatures.
+as precise as possible - if you find any mistakes, file a bug.

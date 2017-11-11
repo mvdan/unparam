@@ -59,8 +59,6 @@ type Checker struct {
 var (
 	_ lint.Checker = (*Checker)(nil)
 	_ lint.WithSSA = (*Checker)(nil)
-
-	skipValue = new(ssa.Value)
 )
 
 func (c *Checker) lines(args ...string) ([]string, error) {

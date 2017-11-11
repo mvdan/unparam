@@ -390,7 +390,6 @@ func (c *Checker) declCounts(pkgDir string, pkgName string) map[string]int {
 	pkgs, err := parser.ParseDir(fset, pkgDir, nil, 0)
 	if err != nil {
 		panic(err.Error())
-		return nil
 	}
 	pkg := pkgs[pkgName]
 	count := make(map[string]int)

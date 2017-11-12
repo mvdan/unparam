@@ -234,7 +234,7 @@ funcLoop:
 				continue
 			}
 			reason := "is unused"
-			if cv := receivesSameValue(cg.Nodes[fn].In, par, i); cv != nil {
+			if cv := receivesSameValues(cg.Nodes[fn].In, par, i); cv != nil {
 				reason = fmt.Sprintf("always receives %v", cv)
 			} else if anyRealUse(par, i) {
 				c.debug("  skip - used somewhere in the func body\n")
@@ -258,12 +258,13 @@ funcLoop:
 	return issues, nil
 }
 
-func receivesSameValue(in []*callgraph.Edge, par *ssa.Parameter, pos int) constant.Value {
+func receivesSameValues(in []*callgraph.Edge, par *ssa.Parameter, pos int) constant.Value {
 	if ast.IsExported(par.Parent().Name()) {
 		// we might not have all call sites for an exported func
 		return nil
 	}
 	var seen constant.Value
+	multiple := false
 	for _, edge := range in {
 		call := edge.Site.Common()
 		cnst, ok := call.Args[pos].(*ssa.Const)
@@ -274,7 +275,12 @@ func receivesSameValue(in []*callgraph.Edge, par *ssa.Parameter, pos int) consta
 			seen = cnst.Value // first constant
 		} else if !constant.Compare(seen, token.EQL, cnst.Value) {
 			return nil // different constants
+		} else {
+			multiple = true
 		}
+	}
+	if !multiple {
+		return nil // same constant multiple times
 	}
 	return seen
 }

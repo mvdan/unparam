@@ -2,9 +2,16 @@ package foo
 
 import "math/rand"
 
-func receivesSame(r rune) {
+func receivesSameMany(r rune) {
 	doWork()
 	if r == '0' {
+		println(r)
+	}
+}
+
+func receivesSameOnce(r rune) {
+	doWork()
+	if r == '1' {
 		println(r)
 	}
 }
@@ -33,8 +40,9 @@ func receivesCallExpr(r rune) {
 func randRune() rune { return rune(rand.Int31()) }
 
 func CallReceivers() {
-	receivesSame('a')
-	receivesSame('a')
+	receivesSameMany('a')
+	receivesSameMany('a')
+	receivesSameOnce('b')
 	receivesDifferent('a')
 	receivesDifferent('b')
 	ReceivesSameExported('b')

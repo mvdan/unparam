@@ -22,4 +22,4 @@ testdata/tags_main.go:5:23: b is unused
 testdata/tags_main.go:22:22: f is unused
 testdata/usedas.go:49:22: u is unused
 testdata/usedas.go:67:38: i is unused
-testdata/values.go:5:19: r always receives 97
+testdata/values.go:5:23: r always receives 97

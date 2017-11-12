@@ -5,6 +5,11 @@ testdata/ignoredrets.go:36:20: result 0 (int) is never used
 testdata/ignoredrets.go:36:25: result 1 (string) is never used
 testdata/ignoredrets.go:46:26: result 1 (string) is never used
 testdata/methods.go:5:28: a is unused
+testdata/repeatrets.go:3:34: result 0 (int) is just parameter n
+testdata/repeatrets.go:8:46: result 0 (int) is just parameter n
+testdata/repeatrets.go:24:42: result 0 ([]int) is just parameter ns
+testdata/repeatrets.go:35:48: result 0 (*./testdata.FooStruct) is just parameter n
+testdata/repeatrets.go:47:49: result 0 (*./testdata.FooStruct) is just parameter n
 testdata/reused.go:3:24: f is unused
 testdata/reused.go:24:32: bs is unused
 testdata/reused.go:29:43: bs is unused
@@ -12,14 +17,14 @@ testdata/samerets.go:8:20: result 0 (int) is always 3
 testdata/samerets.go:26:29: result b is always true
 testdata/samerets.go:26:37: result s is always "foo"
 testdata/simple.go:5:19: b is unused
-testdata/simple.go:7:19: f is unused
+testdata/simple.go:10:19: f is unused
 testdata/simple_test.go:3:20: b is unused
 testdata/stubs.go:13:42: f is unused
 testdata/stubs.go:30:43: f is unused
 testdata/stubs.go:45:30: s is unused
 testdata/stubs.go:49:32: i is unused
 testdata/tags_main.go:5:23: b is unused
-testdata/tags_main.go:22:22: f is unused
+testdata/tags_main.go:24:22: f is unused
 testdata/usedas.go:49:22: u is unused
 testdata/usedas.go:67:38: i is unused
 testdata/values.go:5:23: r always receives 97

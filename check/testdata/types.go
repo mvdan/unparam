@@ -2,7 +2,9 @@ package foo
 
 type FooType int
 
-type FooStruct struct{}
+type FooStruct struct {
+	field int
+}
 
 func doWork() {}
 

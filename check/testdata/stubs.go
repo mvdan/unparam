@@ -48,6 +48,7 @@ func LogImpl(f FooType) { log.Print("not implemented") }
 
 func OneOverwritten(a FooType, i uint8) (FooType, uint8) {
 	i = 3
+	a += 1
 	return a, i
 }
 

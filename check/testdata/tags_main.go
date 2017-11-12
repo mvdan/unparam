@@ -2,7 +2,9 @@
 
 package foo
 
-func OneUnusedMain(a, b FooType) FooType { return a }
+func OneUnusedMain(a, b FooType) FooType {
+	return a + 2
+}
 
 func MultipleImpls(f FooType) int32 {
 	doWork()

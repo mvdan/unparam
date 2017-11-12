@@ -195,7 +195,8 @@ funcLoop:
 			}
 		}
 
-		seen := make([]constant.Value, results.Len())
+		seenConsts := make([]constant.Value, results.Len())
+		seenParams := make([]*ssa.Parameter, results.Len())
 		numRets := 0
 		for _, block := range fn.Blocks {
 			last := block.Instrs[len(block.Instrs)-1]
@@ -204,21 +205,34 @@ funcLoop:
 				continue
 			}
 			for i, val := range ret.Results {
-				cnst, ok := val.(*ssa.Const)
-				switch {
-				case !ok:
-					seen[i] = nil
-				case numRets == 0:
-					seen[i] = cnst.Value
-				case seen[i] == nil:
-				case !constant.Compare(seen[i], token.EQL, cnst.Value):
-					seen[i] = nil
+				switch x := val.(type) {
+				case *ssa.Const:
+					seenParams[i] = nil
+					switch {
+					case numRets == 0:
+						seenConsts[i] = x.Value
+					case seenConsts[i] == nil:
+					case !constant.Compare(seenConsts[i], token.EQL, x.Value):
+						seenConsts[i] = nil
+					}
+				case *ssa.Parameter:
+					seenConsts[i] = nil
+					switch {
+					case numRets == 0:
+						seenParams[i] = x
+					case seenParams[i] == nil:
+					case seenParams[i] != x:
+						seenParams[i] = nil
+					}
+				default:
+					seenConsts[i] = nil
+					seenParams[i] = nil
 				}
 			}
 			numRets++
 		}
 		if numRets > 1 {
-			for i, val := range seen {
+			for i, val := range seenConsts {
 				if val == nil {
 					continue
 				}
@@ -229,6 +243,31 @@ funcLoop:
 					msg: fmt.Sprintf("result %s is always %s", name, val.String()),
 				})
 			}
+		}
+
+		for ri, par := range seenParams {
+			if par == nil {
+				continue
+			}
+			pi := -1
+			for i, par2 := range fn.Params {
+				if par2 == par {
+					pi = i
+					break
+				}
+			}
+			if pi < 0 {
+				panic("should have found parameter")
+			}
+			if pi == 0 && fn.Signature.Recv() != nil { // receiver
+				continue
+			}
+			res := results.At(ri)
+			name := paramDesc(ri, res)
+			issues = append(issues, Issue{
+				pos: res.Pos(),
+				msg: fmt.Sprintf("result %s is just parameter %s", name, par.Name()),
+			})
 		}
 
 		for i, par := range fn.Params {

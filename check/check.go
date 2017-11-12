@@ -59,6 +59,8 @@ type Checker struct {
 var (
 	_ lint.Checker = (*Checker)(nil)
 	_ lint.WithSSA = (*Checker)(nil)
+
+	errorType = types.Universe.Lookup("error").Type()
 )
 
 func (c *Checker) lines(args ...string) ([]string, error) {
@@ -160,6 +162,13 @@ funcLoop:
 		if !ast.IsExported(fn.Name()) && len(callers) > 0 {
 		resLoop:
 			for i := 0; i < results.Len(); i++ {
+				res := results.At(i)
+				if res.Type() == errorType {
+					// "error is never unused" is
+					// less useful, and it's up to
+					// tools like errcheck anyway.
+					continue
+				}
 				for _, edge := range callers {
 					val := edge.Site.Value()
 					if val == nil { // e.g. go statement
@@ -178,7 +187,6 @@ funcLoop:
 						}
 					}
 				}
-				res := results.At(i)
 				name := paramDesc(i, res)
 				issues = append(issues, Issue{
 					pos: res.Pos(),

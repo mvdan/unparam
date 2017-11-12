@@ -1,5 +1,7 @@
 package foo
 
+import "errors"
+
 func singleIgnored() rune {
 	doWork()
 	return '0'
@@ -49,5 +51,19 @@ func someIgnored() (int, string) {
 func SomeIgnoredUse() {
 	someIgnored()
 	i, _ := someIgnored()
+	println(i)
+}
+
+func errorIgnored() (int, error) {
+	doWork()
+	if cond {
+		return 3, errors.New("foo")
+	}
+	return 2, nil
+}
+
+func ErrorIgnoredUse() {
+	errorIgnored()
+	i, _ := errorIgnored()
 	println(i)
 }

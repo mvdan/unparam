@@ -247,25 +247,15 @@ funcLoop:
 		}
 
 	}
-	// TODO: replace by sort.Slice once we drop Go 1.7 support
-	sort.Sort(byNamePos{c.prog.Fset, issues})
+	sort.Slice(issues, func(i, j int) bool {
+		p1 := c.prog.Fset.Position(issues[i].Pos())
+		p2 := c.prog.Fset.Position(issues[j].Pos())
+		if p1.Filename == p2.Filename {
+			return p1.Offset < p2.Offset
+		}
+		return p1.Filename < p2.Filename
+	})
 	return issues, nil
-}
-
-type byNamePos struct {
-	fset *token.FileSet
-	l    []lint.Issue
-}
-
-func (p byNamePos) Len() int      { return len(p.l) }
-func (p byNamePos) Swap(i, j int) { p.l[i], p.l[j] = p.l[j], p.l[i] }
-func (p byNamePos) Less(i, j int) bool {
-	p1 := p.fset.Position(p.l[i].Pos())
-	p2 := p.fset.Position(p.l[j].Pos())
-	if p1.Filename == p2.Filename {
-		return p1.Offset < p2.Offset
-	}
-	return p1.Filename < p2.Filename
 }
 
 func receivesSameValue(in []*callgraph.Edge, par *ssa.Parameter, pos int) constant.Value {

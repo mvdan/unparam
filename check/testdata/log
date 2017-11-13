@@ -1,3 +1,6 @@
+testdata/extractparams.go:15:24: a is unused
+testdata/extractparams.go:20:38: a is unused
+testdata/extractparams.go:27:29: b is unused
 testdata/funclit.go:4:20: f is unused
 testdata/ignoredrets.go:5:22: result 0 (rune) is never used
 testdata/ignoredrets.go:26:27: result r is never used

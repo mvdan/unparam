@@ -141,6 +141,10 @@ funcLoop:
 			continue
 		}
 		for _, edge := range cg.Nodes[fn].In {
+			if receivesExtractedArgs(fn.Signature, edge.Site.Value()) {
+				c.debug("  skip - type is required via call\n")
+				continue funcLoop
+			}
 			switch edge.Site.Common().Value.(type) {
 			case *ssa.Function:
 			default:
@@ -487,6 +491,28 @@ func (c *Checker) multipleImpls(info *loader.PackageInfo, fn *ssa.Function) bool
 		name = named.Obj().Name() + "." + name
 	}
 	return count[name] > 1
+}
+
+func receivesExtractedArgs(sign *types.Signature, call *ssa.Call) bool {
+	if call == nil {
+		return false
+	}
+	if sign.Params().Len() < 2 {
+		return false // extracting into one param is ok
+	}
+	args := call.Operands(nil)
+	for i, arg := range args {
+		if i == 0 {
+			continue // *ssa.Function, func itself
+		}
+		if i == 1 && sign.Recv() != nil {
+			continue // method receiver
+		}
+		if _, ok := (*arg).(*ssa.Extract); !ok {
+			return false
+		}
+	}
+	return true
 }
 
 func paramDesc(i int, v *types.Var) string {

@@ -148,7 +148,11 @@ funcLoop:
 				continue funcLoop
 			}
 			caller := edge.Caller.Func
-			if len(caller.FreeVars) == 1 && strings.HasSuffix(caller.Name(), "$bound") {
+			switch {
+			case len(caller.FreeVars) == 1 && strings.HasSuffix(caller.Name(), "$bound"):
+				// passing method via someFunc(type.method)
+				fallthrough
+			case len(caller.FreeVars) == 0 && strings.HasSuffix(caller.Name(), "$thunk"):
 				// passing method via someFunc(recv.method)
 				c.debug("  skip - type is required via call\n")
 				continue funcLoop

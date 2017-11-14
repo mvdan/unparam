@@ -100,10 +100,19 @@ func (f FooType) MethodPassedAsParam(f2 FooType) bool {
 	return true
 }
 
+func (f FooType) MethodPassedAsParam2() bool {
+        if f == 4 {
+                doWork()
+                return true
+        }
+        return true
+}
+
 func MethodUsedAsArg() {
 	foo := func(f func(f FooType) bool) {
 		f(2)
 	}
 	var f FooType
 	foo(f.MethodPassedAsParam)
+	foo((FooType).MethodPassedAsParam2)
 }

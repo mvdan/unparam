@@ -327,7 +327,7 @@ func receivesSameValues(in []*callgraph.Edge, par *ssa.Parameter, pos int) const
 		return nil
 	}
 	var seen constant.Value
-	multiple := false
+	count := 0
 	for _, edge := range in {
 		call := edge.Site.Common()
 		cnst, ok := call.Args[pos].(*ssa.Const)
@@ -336,14 +336,15 @@ func receivesSameValues(in []*callgraph.Edge, par *ssa.Parameter, pos int) const
 		}
 		if seen == nil {
 			seen = cnst.Value // first constant
+			count = 1
 		} else if !constant.Compare(seen, token.EQL, cnst.Value) {
 			return nil // different constants
 		} else {
-			multiple = true
+			count++
 		}
 	}
-	if !multiple {
-		return nil // same constant multiple times
+	if count < 4 {
+		return nil // not enough times, likely false positive
 	}
 	return seen
 }

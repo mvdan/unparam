@@ -2,12 +2,12 @@ package foo
 
 func FuncResultAsParams(a, b FooType) FooType {
 	doWork()
-	return a+1
+	return a + 1
 }
 
 func (f FooType) MethodResultAsParams(a, b FooType) FooType {
 	doWork()
-	return a+1
+	return a + 1
 }
 
 func generateResults() (a, b FooType) { return }
@@ -26,7 +26,7 @@ func generateResult() (a FooType) { return }
 
 func FuncResultsAsParams(a, b FooType) FooType {
 	doWork()
-	return a+1
+	return a + 1
 }
 
 func ResultCalls() {

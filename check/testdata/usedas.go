@@ -101,11 +101,11 @@ func (f FooType) MethodPassedAsParam(f2 FooType) bool {
 }
 
 func (f FooType) MethodPassedAsParam2() bool {
-        if f == 4 {
-                doWork()
-                return true
-        }
-        return true
+	if f == 4 {
+		doWork()
+		return true
+	}
+	return true
 }
 
 func MethodUsedAsArg() {

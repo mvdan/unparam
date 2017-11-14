@@ -1,33 +1,33 @@
-testdata/extractparams.go:15:24: a is unused
-testdata/extractparams.go:20:38: a is unused
-testdata/extractparams.go:27:29: b is unused
-testdata/funclit.go:4:20: f is unused
-testdata/ignoredrets.go:5:22: result 0 (rune) is never used
-testdata/ignoredrets.go:26:27: result r is never used
-testdata/ignoredrets.go:36:20: result 0 (int) is never used
-testdata/ignoredrets.go:36:25: result 1 (string) is never used
-testdata/ignoredrets.go:46:26: result 1 (string) is never used
-testdata/methods.go:5:28: a is unused
-testdata/repeatrets.go:3:34: result 0 (int) is just parameter n
-testdata/repeatrets.go:8:46: result 0 (int) is just parameter n
-testdata/repeatrets.go:24:42: result 0 ([]int) is just parameter ns
-testdata/repeatrets.go:35:48: result 0 (*./testdata.FooStruct) is just parameter n
-testdata/repeatrets.go:47:49: result 0 (*./testdata.FooStruct) is just parameter n
-testdata/reused.go:3:24: f is unused
-testdata/reused.go:24:32: bs is unused
-testdata/reused.go:29:43: bs is unused
-testdata/samerets.go:8:20: result 0 (int) is always 3
-testdata/samerets.go:26:29: result b is always true
-testdata/samerets.go:26:37: result s is always "foo"
-testdata/simple.go:5:19: b is unused
-testdata/simple.go:10:19: f is unused
-testdata/simple_test.go:3:20: b is unused
-testdata/stubs.go:13:42: f is unused
-testdata/stubs.go:30:43: f is unused
-testdata/stubs.go:45:30: s is unused
-testdata/stubs.go:49:32: i is unused
-testdata/tags_main.go:5:23: b is unused
-testdata/tags_main.go:24:22: f is unused
-testdata/usedas.go:49:22: u is unused
-testdata/usedas.go:67:38: i is unused
-testdata/values.go:5:23: r always receives 97
+testdata/extractparams.go:15:24: FuncResultAsParam - a is unused
+testdata/extractparams.go:20:38: (FooType).MethodResultAsParam - a is unused
+testdata/extractparams.go:27:29: FuncResultsAsParams - b is unused
+testdata/funclit.go:4:20: Parent$1 - f is unused
+testdata/ignoredrets.go:5:22: singleIgnored - result 0 (rune) is never used
+testdata/ignoredrets.go:26:27: singleIgnoredName - result r is never used
+testdata/ignoredrets.go:36:20: allIgnored - result 0 (int) is never used
+testdata/ignoredrets.go:36:25: allIgnored - result 1 (string) is never used
+testdata/ignoredrets.go:46:26: someIgnored - result 1 (string) is never used
+testdata/methods.go:5:28: (FooType).OneUnused - a is unused
+testdata/repeatrets.go:3:34: ReturnParamUnchanged - result 0 (int) is just parameter n
+testdata/repeatrets.go:8:46: (FooType).ReturnParamUnchanged - result 0 (int) is just parameter n
+testdata/repeatrets.go:24:42: ReturnParamSliceUnchanged - result 0 ([]int) is just parameter ns
+testdata/repeatrets.go:35:48: ReturnParamPointerUnchanged - result 0 (*./testdata.FooStruct) is just parameter n
+testdata/repeatrets.go:47:49: ReturnParamPointerUnchanged2 - result 0 (*./testdata.FooStruct) is just parameter n
+testdata/reused.go:3:24: ReusedRecursively - f is unused
+testdata/reused.go:24:32: UnusedVariadic - bs is unused
+testdata/reused.go:29:43: ReusedRecursivelyVariadic - bs is unused
+testdata/samerets.go:8:20: ManyReturns - result 0 (int) is always 3
+testdata/samerets.go:26:29: ManyReturnsMultiple - result b is always true
+testdata/samerets.go:26:37: ManyReturnsMultiple - result s is always "foo"
+testdata/simple.go:5:19: OneUnused - b is unused
+testdata/simple.go:10:19: StructUnused - f is unused
+testdata/simple_test.go:3:20: OneUnused2 - b is unused
+testdata/stubs.go:13:42: NonPanicImpl - f is unused
+testdata/stubs.go:30:43: NonPanicImpl2 - f is unused
+testdata/stubs.go:45:30: NonConstImpl - s is unused
+testdata/stubs.go:49:32: OneOverwritten - i is unused
+testdata/tags_main.go:5:23: OneUnusedMain - b is unused
+testdata/tags_main.go:24:22: MultImplsMethod - f is unused
+testdata/usedas.go:49:22: UsedAsArg$4 - u is unused
+testdata/usedas.go:67:38: UsedAsGlobalArgIface - i is unused
+testdata/values.go:5:23: receivesSameMany - r always receives 97

@@ -93,12 +93,13 @@ func (c *Checker) lines(args ...string) ([]string, error) {
 }
 
 type Issue struct {
-	pos token.Pos
-	msg string
+	pos   token.Pos
+	fname string
+	msg   string
 }
 
 func (i Issue) Pos() token.Pos  { return i.pos }
-func (i Issue) Message() string { return i.msg }
+func (i Issue) Message() string { return i.fname + " - " + i.msg }
 
 func (c *Checker) Program(lprog *loader.Program) {
 	c.lprog = lprog
@@ -135,7 +136,7 @@ funcLoop:
 		if info == nil { // not part of given pkgs
 			continue
 		}
-		c.debug("func %s\n", fn.String())
+		c.debug("func %s\n", fn.RelString(fn.Package().Pkg))
 		if dummyImpl(fn.Blocks[0]) { // panic implementation
 			c.debug("  skip - dummy implementation\n")
 			continue
@@ -205,8 +206,9 @@ funcLoop:
 				}
 				name := paramDesc(i, res)
 				issues = append(issues, Issue{
-					pos: res.Pos(),
-					msg: fmt.Sprintf("result %s is never used", name),
+					pos:   res.Pos(),
+					fname: fn.RelString(fn.Package().Pkg),
+					msg:   fmt.Sprintf("result %s is never used", name),
 				})
 			}
 		}
@@ -255,8 +257,9 @@ funcLoop:
 				res := results.At(i)
 				name := paramDesc(i, res)
 				issues = append(issues, Issue{
-					pos: res.Pos(),
-					msg: fmt.Sprintf("result %s is always %s", name, val.String()),
+					pos:   res.Pos(),
+					fname: fn.RelString(fn.Package().Pkg),
+					msg:   fmt.Sprintf("result %s is always %s", name, val.String()),
 				})
 			}
 		}
@@ -281,8 +284,9 @@ funcLoop:
 			res := results.At(ri)
 			name := paramDesc(ri, res)
 			issues = append(issues, Issue{
-				pos: res.Pos(),
-				msg: fmt.Sprintf("result %s is just parameter %s", name, par.Name()),
+				pos:   res.Pos(),
+				fname: fn.RelString(fn.Package().Pkg),
+				msg:   fmt.Sprintf("result %s is just parameter %s", name, par.Name()),
 			})
 		}
 
@@ -304,8 +308,9 @@ funcLoop:
 				continue
 			}
 			issues = append(issues, Issue{
-				pos: par.Pos(),
-				msg: fmt.Sprintf("%s %s", par.Name(), reason),
+				pos:   par.Pos(),
+				fname: fn.RelString(fn.Package().Pkg),
+				msg:   fmt.Sprintf("%s %s", par.Name(), reason),
 			})
 		}
 

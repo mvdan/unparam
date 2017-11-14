@@ -91,3 +91,19 @@ func BarIfaceUse() {
 	b := barImpl()
 	b.bar(0, 1)
 }
+
+func (f FooType) MethodPassedAsParam(f2 FooType) bool {
+	if f == 3 {
+		doWork()
+		return true
+	}
+	return true
+}
+
+func MethodUsedAsArg() {
+	foo := func(f func(f FooType) bool) {
+		f(2)
+	}
+	var f FooType
+	foo(f.MethodPassedAsParam)
+}

@@ -141,7 +141,15 @@ funcLoop:
 			continue
 		}
 		for _, edge := range cg.Nodes[fn].In {
-			if receivesExtractedArgs(fn.Signature, edge.Site.Value()) {
+			call := edge.Site.Value()
+			if receivesExtractedArgs(fn.Signature, call) {
+				// called via function(results())
+				c.debug("  skip - type is required via call\n")
+				continue funcLoop
+			}
+			caller := edge.Caller.Func
+			if len(caller.FreeVars) == 1 && strings.HasSuffix(caller.Name(), "$bound") {
+				// passing method via someFunc(recv.method)
 				c.debug("  skip - type is required via call\n")
 				continue funcLoop
 			}

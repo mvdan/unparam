@@ -65,7 +65,9 @@ var (
 
 func (c *Checker) lines(args ...string) ([]string, error) {
 	paths := gotool.ImportPaths(args)
-	var conf loader.Config
+	conf := loader.Config{
+		ParserMode: parser.ParseComments,
+	}
 	if _, err := conf.FromArgs(paths, c.tests); err != nil {
 		return nil, err
 	}
@@ -115,11 +117,23 @@ func (c *Checker) debug(format string, a ...interface{}) {
 	}
 }
 
+func generatedDoc(text string) bool {
+	return strings.Contains(text, "Code generated") ||
+		strings.Contains(text, "DO NOT EDIT")
+}
+
 func (c *Checker) Check() ([]lint.Issue, error) {
 	c.cachedDeclCounts = make(map[string]map[string]int)
 	wantPkg := make(map[*types.Package]*loader.PackageInfo)
+	genFiles := make(map[string]bool)
 	for _, info := range c.lprog.InitialPackages() {
 		wantPkg[info.Pkg] = info
+		for _, f := range info.Files {
+			if len(f.Comments) > 0 && generatedDoc(f.Comments[0].Text()) {
+				fname := c.prog.Fset.Position(f.Pos()).Filename
+				genFiles[fname] = true
+			}
+		}
 	}
 	cg := cha.CallGraph(c.prog)
 
@@ -135,6 +149,10 @@ funcLoop:
 		info := wantPkg[fn.Pkg.Pkg]
 		if info == nil { // not part of given pkgs
 			continue
+		}
+		fname := c.prog.Fset.Position(fn.Pos()).Filename
+		if genFiles[fname] {
+			continue // generated file
 		}
 		c.debug("func %s\n", fn.RelString(fn.Package().Pkg))
 		if dummyImpl(fn.Blocks[0]) { // panic implementation

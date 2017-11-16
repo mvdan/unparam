@@ -445,7 +445,7 @@ func dummyImpl(blk *ssa.BasicBlock) bool {
 			case nil, *ssa.Const, *ssa.ChangeType, *ssa.Alloc,
 				*ssa.MakeInterface, *ssa.Function,
 				*ssa.Global, *ssa.IndexAddr, *ssa.Slice,
-				*ssa.UnOp:
+				*ssa.UnOp, *ssa.Parameter:
 			case *ssa.Call:
 				if rxHarmlessCall.MatchString(x.Call.Value.String()) {
 					continue

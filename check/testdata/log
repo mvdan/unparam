@@ -26,6 +26,7 @@ testdata/simple.go:10:19: StructUnused - f is unused
 testdata/simple_test.go:3:20: OneUnused2 - b is unused
 testdata/stubs.go:13:42: NonPanicImpl - f is unused
 testdata/stubs.go:30:43: NonPanicImpl2 - f is unused
+testdata/stubs.go:45:19: NonConstImpl - f is unused
 testdata/stubs.go:45:30: NonConstImpl - s is unused
 testdata/stubs.go:49:32: OneOverwritten - i is unused
 testdata/tags_main.go:5:23: OneUnusedMain - b is unused

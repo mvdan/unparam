@@ -42,7 +42,7 @@ func (f FooType) Error() string { return "foo" }
 
 func CustomErrImpl(f FooType) error { return ConstFoo }
 
-func NonConstImpl(f FooType, s string) error { return f }
+func NonConstImpl(f FooType, s string) error { return Sink.(error) }
 
 func LogImpl(f FooType) { log.Print("not implemented") }
 

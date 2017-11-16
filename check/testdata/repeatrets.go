@@ -49,3 +49,5 @@ func ReturnParamPointerUnchanged2(n *FooStruct) *FooStruct {
 	n.field = 3
 	return n
 }
+
+func AppendImplStub(fs []FooStruct) []FooStruct { return fs }

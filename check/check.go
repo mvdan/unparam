@@ -122,6 +122,8 @@ func generatedDoc(text string) bool {
 		strings.Contains(text, "DO NOT EDIT")
 }
 
+var stdSizes = types.SizesFor("gc", "amd64")
+
 func (c *Checker) Check() ([]lint.Issue, error) {
 	c.cachedDeclCounts = make(map[string]map[string]int)
 	wantPkg := make(map[*types.Package]*loader.PackageInfo)
@@ -316,6 +318,10 @@ funcLoop:
 			switch par.Object().Name() {
 			case "", "_": // unnamed
 				c.debug("  skip - unnamed\n")
+				continue
+			}
+			if stdSizes.Sizeof(par.Type()) == 0 {
+				c.debug("  skip - zero size\n")
 				continue
 			}
 			reason := "is unused"

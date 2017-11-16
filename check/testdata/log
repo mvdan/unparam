@@ -8,6 +8,7 @@ testdata/ignoredrets.go:36:20: allIgnored - result 0 (int) is never used
 testdata/ignoredrets.go:36:25: allIgnored - result 1 (string) is never used
 testdata/ignoredrets.go:46:26: someIgnored - result 1 (string) is never used
 testdata/methods.go:5:28: (FooType).OneUnused - a is unused
+testdata/names.go:3:18: RegularName - f is unused
 testdata/repeatrets.go:3:34: ReturnParamUnchanged - result 0 (int) is just parameter n
 testdata/repeatrets.go:8:46: (FooType).ReturnParamUnchanged - result 0 (int) is just parameter n
 testdata/repeatrets.go:24:42: ReturnParamSliceUnchanged - result 0 ([]int) is just parameter ns

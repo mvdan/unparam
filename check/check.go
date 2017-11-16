@@ -192,11 +192,69 @@ funcLoop:
 			continue
 		}
 
-		callers := cg.Nodes[fn].In
 		results := fn.Signature.Results()
+		seenConsts := make([]constant.Value, results.Len())
+		seenParams := make([]*ssa.Parameter, results.Len())
+		numRets := 0
+		allRetsExtracting := true
+		for _, block := range fn.Blocks {
+			last := block.Instrs[len(block.Instrs)-1]
+			ret, ok := last.(*ssa.Return)
+			if !ok {
+				continue
+			}
+			for i, val := range ret.Results {
+				switch x := val.(type) {
+				case *ssa.Const:
+					allRetsExtracting = false
+					seenParams[i] = nil
+					switch {
+					case numRets == 0:
+						seenConsts[i] = x.Value
+					case seenConsts[i] == nil:
+					case !constant.Compare(seenConsts[i], token.EQL, x.Value):
+						seenConsts[i] = nil
+					}
+				case *ssa.Parameter:
+					allRetsExtracting = false
+					seenConsts[i] = nil
+					switch {
+					case numRets == 0:
+						seenParams[i] = x
+					case seenParams[i] == nil:
+					case seenParams[i] != x:
+						seenParams[i] = nil
+					}
+				case *ssa.Extract:
+					seenConsts[i] = nil
+					seenParams[i] = nil
+				default:
+					allRetsExtracting = false
+					seenConsts[i] = nil
+					seenParams[i] = nil
+				}
+			}
+			numRets++
+		}
+		if numRets > 1 {
+			for i, val := range seenConsts {
+				if val == nil {
+					continue
+				}
+				res := results.At(i)
+				name := paramDesc(i, res)
+				issues = append(issues, Issue{
+					pos:   res.Pos(),
+					fname: fn.RelString(fn.Package().Pkg),
+					msg:   fmt.Sprintf("result %s is always %s", name, val.String()),
+				})
+			}
+		}
+
+		callers := cg.Nodes[fn].In
 		// skip exported funcs, as well as those that are
 		// entirely unused
-		if !ast.IsExported(fn.Name()) && len(callers) > 0 {
+		if !ast.IsExported(fn.Name()) && len(callers) > 0 && !allRetsExtracting {
 		resLoop:
 			for i := 0; i < results.Len(); i++ {
 				res := results.At(i)
@@ -229,57 +287,6 @@ funcLoop:
 					pos:   res.Pos(),
 					fname: fn.RelString(fn.Package().Pkg),
 					msg:   fmt.Sprintf("result %s is never used", name),
-				})
-			}
-		}
-
-		seenConsts := make([]constant.Value, results.Len())
-		seenParams := make([]*ssa.Parameter, results.Len())
-		numRets := 0
-		for _, block := range fn.Blocks {
-			last := block.Instrs[len(block.Instrs)-1]
-			ret, ok := last.(*ssa.Return)
-			if !ok {
-				continue
-			}
-			for i, val := range ret.Results {
-				switch x := val.(type) {
-				case *ssa.Const:
-					seenParams[i] = nil
-					switch {
-					case numRets == 0:
-						seenConsts[i] = x.Value
-					case seenConsts[i] == nil:
-					case !constant.Compare(seenConsts[i], token.EQL, x.Value):
-						seenConsts[i] = nil
-					}
-				case *ssa.Parameter:
-					seenConsts[i] = nil
-					switch {
-					case numRets == 0:
-						seenParams[i] = x
-					case seenParams[i] == nil:
-					case seenParams[i] != x:
-						seenParams[i] = nil
-					}
-				default:
-					seenConsts[i] = nil
-					seenParams[i] = nil
-				}
-			}
-			numRets++
-		}
-		if numRets > 1 {
-			for i, val := range seenConsts {
-				if val == nil {
-					continue
-				}
-				res := results.At(i)
-				name := paramDesc(i, res)
-				issues = append(issues, Issue{
-					pos:   res.Pos(),
-					fname: fn.RelString(fn.Package().Pkg),
-					msg:   fmt.Sprintf("result %s is always %s", name, val.String()),
 				})
 			}
 		}

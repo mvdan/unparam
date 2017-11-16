@@ -41,3 +41,18 @@ func ResultCalls() {
 	Sink = f.MethodResultAsParam(generateResult())
 	Sink = FuncResultsAsParams(generateResult(), generateResult())
 }
+
+func returnResultsOwn() (FooType, FooType) {
+	a := generateResult()
+	a++
+	return a, a * 2
+}
+
+func returnResultsDirectly() (FooType, FooType) {
+	return generateResults()
+}
+
+func ReturnResultsCalls() {
+	_, Sink = returnResultsOwn()
+	_, Sink = returnResultsDirectly()
+}

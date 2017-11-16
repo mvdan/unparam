@@ -1,6 +1,7 @@
 testdata/extractparams.go:15:24: FuncResultAsParam - a is unused
 testdata/extractparams.go:20:38: (FooType).MethodResultAsParam - a is unused
 testdata/extractparams.go:27:29: FuncResultsAsParams - b is unused
+testdata/extractparams.go:45:26: returnResultsOwn - result 0 (./testdata.FooType) is never used
 testdata/funclit.go:4:20: Parent$1 - f is unused
 testdata/ignoredrets.go:5:22: singleIgnored - result 0 (rune) is never used
 testdata/ignoredrets.go:26:27: singleIgnoredName - result r is never used

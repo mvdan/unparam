@@ -291,32 +291,6 @@ funcLoop:
 			}
 		}
 
-		for ri, par := range seenParams {
-			if par == nil {
-				continue
-			}
-			pi := -1
-			for i, par2 := range fn.Params {
-				if par2 == par {
-					pi = i
-					break
-				}
-			}
-			if pi < 0 {
-				panic("should have found parameter")
-			}
-			if pi == 0 && fn.Signature.Recv() != nil { // receiver
-				continue
-			}
-			res := results.At(ri)
-			name := paramDesc(ri, res)
-			issues = append(issues, Issue{
-				pos:   res.Pos(),
-				fname: fn.RelString(fn.Package().Pkg),
-				msg:   fmt.Sprintf("result %s is just parameter %s", name, par.Name()),
-			})
-		}
-
 		for i, par := range fn.Params {
 			if i == 0 && fn.Signature.Recv() != nil { // receiver
 				continue

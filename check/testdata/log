@@ -10,11 +10,6 @@ testdata/ignoredrets.go:36:25: allIgnored - result 1 (string) is never used
 testdata/ignoredrets.go:46:26: someIgnored - result 1 (string) is never used
 testdata/methods.go:5:28: (FooType).OneUnused - a is unused
 testdata/names.go:3:18: RegularName - f is unused
-testdata/repeatrets.go:3:34: ReturnParamUnchanged - result 0 (int) is just parameter n
-testdata/repeatrets.go:8:46: (FooType).ReturnParamUnchanged - result 0 (int) is just parameter n
-testdata/repeatrets.go:24:42: ReturnParamSliceUnchanged - result 0 ([]int) is just parameter ns
-testdata/repeatrets.go:35:48: ReturnParamPointerUnchanged - result 0 (*./testdata.FooStruct) is just parameter n
-testdata/repeatrets.go:47:49: ReturnParamPointerUnchanged2 - result 0 (*./testdata.FooStruct) is just parameter n
 testdata/reused.go:3:24: ReusedRecursively - f is unused
 testdata/reused.go:24:32: UnusedVariadic - bs is unused
 testdata/reused.go:29:43: ReusedRecursivelyVariadic - bs is unused

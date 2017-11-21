@@ -65,6 +65,13 @@ func withVariadic(s ...string) {
 	println(len(s))
 }
 
+func receivesSameFromGenerated(f FooType) {
+	doWork()
+	if f == 4 {
+		println(f)
+	}
+}
+
 func CallReceivers() {
 	receivesSameMany(3)
 	receivesSameMany(3)

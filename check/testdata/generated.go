@@ -6,3 +6,10 @@ func oneUnusedGenerated(a, b FooType) FooType {
 	a += 1
 	return a
 }
+
+func GeneratedCalls() {
+	receivesSameFromGenerated(FooType(2))
+	receivesSameFromGenerated(FooType(2))
+	receivesSameFromGenerated(FooType(2))
+	receivesSameFromGenerated(FooType(2))
+}

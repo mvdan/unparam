@@ -141,7 +141,6 @@ func (c *Checker) Check() ([]lint.Issue, error) {
 			if len(f.Comments) > 0 && generatedDoc(f.Comments[0].Text()) {
 				fname := c.prog.Fset.Position(f.Pos()).Filename
 				genFiles[fname] = true
-				continue
 			}
 			ast.Inspect(f, func(node ast.Node) bool {
 				if ce, ok := node.(*ast.CallExpr); ok {
@@ -387,12 +386,9 @@ func (c *Checker) receivesSameValues(in []*callgraph.Edge, par *ssa.Parameter, p
 		}
 		origArg := ""
 		origCall := c.callByPos[call.Pos()]
-		switch {
-		case origCall == nil:
-			// no original node info
-		case origPos >= len(origCall.Args):
+		if origPos >= len(origCall.Args) {
 			// variadic parameter that wasn't given
-		default:
+		} else {
 			origArg = nodeStr(origCall.Args[origPos])
 		}
 		if seen == nil {

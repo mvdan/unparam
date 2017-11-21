@@ -258,63 +258,62 @@ funcLoop:
 			}
 			numRets++
 		}
-		if numRets > 1 {
-			for i, val := range seenConsts {
-				if val == nil {
-					continue
-				}
-				res := results.At(i)
-				name := paramDesc(i, res)
-				issues = append(issues, Issue{
-					pos:   res.Pos(),
-					fname: fn.RelString(fn.Package().Pkg),
-					msg:   fmt.Sprintf("result %s is always %s", name, val.String()),
-				})
+		for i, val := range seenConsts {
+			if val == nil || numRets < 2 {
+				continue
 			}
+			res := results.At(i)
+			name := paramDesc(i, res)
+			issues = append(issues, Issue{
+				pos:   res.Pos(),
+				fname: fn.RelString(fn.Package().Pkg),
+				msg:   fmt.Sprintf("result %s is always %s", name, val.String()),
+			})
 		}
 
 		callers := cg.Nodes[fn].In
-		if !allRetsExtracting {
-		resLoop:
-			for i := 0; i < results.Len(); i++ {
-				res := results.At(i)
-				if res.Type() == errorType {
-					// "error is never unused" is
-					// less useful, and it's up to
-					// tools like errcheck anyway.
+	resLoop:
+		for i := 0; i < results.Len(); i++ {
+			if allRetsExtracting {
+				continue
+			}
+			res := results.At(i)
+			if res.Type() == errorType {
+				// "error is never unused" is less
+				// useful, and it's up to tools like
+				// errcheck anyway.
+				continue
+			}
+			count := 0
+			for _, edge := range callers {
+				val := edge.Site.Value()
+				if val == nil { // e.g. go statement
+					count++
 					continue
 				}
-				count := 0
-				for _, edge := range callers {
-					val := edge.Site.Value()
-					if val == nil { // e.g. go statement
-						count++
-						continue
+				for _, instr := range *val.Referrers() {
+					extract, ok := instr.(*ssa.Extract)
+					if !ok {
+						continue resLoop // direct, real use
 					}
-					for _, instr := range *val.Referrers() {
-						extract, ok := instr.(*ssa.Extract)
-						if !ok {
-							continue resLoop // direct, real use
-						}
-						if extract.Index != i {
-							continue // not the same result param
-						}
-						if len(*extract.Referrers()) > 0 {
-							continue resLoop // real use after extraction
-						}
+					if extract.Index != i {
+						continue // not the same result param
 					}
-					count++
+					if len(*extract.Referrers()) > 0 {
+						continue resLoop // real use after extraction
+					}
 				}
-				if count < 2 {
-					continue // require ignoring at least twice
-				}
-				name := paramDesc(i, res)
-				issues = append(issues, Issue{
-					pos:   res.Pos(),
-					fname: fn.RelString(fn.Package().Pkg),
-					msg:   fmt.Sprintf("result %s is never used", name),
-				})
+				count++
 			}
+			if count < 2 {
+				continue // require ignoring at least twice
+			}
+			name := paramDesc(i, res)
+			issues = append(issues, Issue{
+				pos:   res.Pos(),
+				fname: fn.RelString(fn.Package().Pkg),
+				msg:   fmt.Sprintf("result %s is never used", name),
+			})
 		}
 
 		for i, par := range fn.Params {

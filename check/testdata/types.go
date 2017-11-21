@@ -11,3 +11,5 @@ func doWork() {}
 var Sink interface{}
 
 var cond bool
+
+const FooConst FooType = 123

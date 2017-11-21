@@ -6,10 +6,12 @@
 package check // import "mvdan.cc/unparam/check"
 
 import (
+	"bytes"
 	"fmt"
 	"go/ast"
 	"go/constant"
 	"go/parser"
+	"go/printer"
 	"go/token"
 	"go/types"
 	"io"
@@ -56,6 +58,8 @@ type Checker struct {
 	debugLog io.Writer
 
 	cachedDeclCounts map[string]map[string]int
+
+	callByPos map[token.Pos]*ast.CallExpr
 }
 
 var (
@@ -128,6 +132,7 @@ var stdSizes = types.SizesFor("gc", "amd64")
 
 func (c *Checker) Check() ([]lint.Issue, error) {
 	c.cachedDeclCounts = make(map[string]map[string]int)
+	c.callByPos = make(map[token.Pos]*ast.CallExpr)
 	wantPkg := make(map[*types.Package]*loader.PackageInfo)
 	genFiles := make(map[string]bool)
 	for _, info := range c.lprog.InitialPackages() {
@@ -136,7 +141,14 @@ func (c *Checker) Check() ([]lint.Issue, error) {
 			if len(f.Comments) > 0 && generatedDoc(f.Comments[0].Text()) {
 				fname := c.prog.Fset.Position(f.Pos()).Filename
 				genFiles[fname] = true
+				continue
 			}
+			ast.Inspect(f, func(node ast.Node) bool {
+				if ce, ok := node.(*ast.CallExpr); ok {
+					c.callByPos[ce.Lparen] = ce
+				}
+				return true
+			})
 		}
 	}
 	cg := cha.CallGraph(c.prog)
@@ -319,8 +331,8 @@ funcLoop:
 				continue
 			}
 			reason := "is unused"
-			if cv := receivesSameValues(cg.Nodes[fn].In, par, i); cv != nil {
-				reason = fmt.Sprintf("always receives %v", cv)
+			if valStr := c.receivesSameValues(cg.Nodes[fn].In, par, i); valStr != "" {
+				reason = fmt.Sprintf("always receives %s", valStr)
 			} else if anyRealUse(par, i) {
 				c.debug("  skip - used somewhere in the func body\n")
 				continue
@@ -344,32 +356,65 @@ funcLoop:
 	return issues, nil
 }
 
-func receivesSameValues(in []*callgraph.Edge, par *ssa.Parameter, pos int) constant.Value {
+func nodeStr(node ast.Node) string {
+	var buf bytes.Buffer
+	fset := token.NewFileSet()
+	if err := printer.Fprint(&buf, fset, node); err != nil {
+		panic(err)
+	}
+	return buf.String()
+}
+
+func (c *Checker) receivesSameValues(in []*callgraph.Edge, par *ssa.Parameter, pos int) string {
 	if ast.IsExported(par.Parent().Name()) {
 		// we might not have all call sites for an exported func
-		return nil
+		return ""
 	}
 	var seen constant.Value
+	origPos := pos
+	if par.Parent().Signature.Recv() != nil {
+		// go/ast's CallExpr.Args does not include the receiver,
+		// but go/ssa's equivalent does.
+		origPos--
+	}
+	seenOrig := ""
 	count := 0
 	for _, edge := range in {
 		call := edge.Site.Common()
 		cnst, ok := call.Args[pos].(*ssa.Const)
 		if !ok {
-			return nil // not a constant
+			return "" // not a constant
+		}
+		origArg := ""
+		origCall := c.callByPos[call.Pos()]
+		switch {
+		case origCall == nil:
+			// no original node info
+		case origPos >= len(origCall.Args):
+			// variadic parameter that wasn't given
+		default:
+			origArg = nodeStr(origCall.Args[origPos])
 		}
 		if seen == nil {
 			seen = cnst.Value // first constant
+			seenOrig = origArg
 			count = 1
 		} else if !constant.Compare(seen, token.EQL, cnst.Value) {
-			return nil // different constants
+			return "" // different constants
 		} else {
 			count++
+			if origArg != seenOrig {
+				seenOrig = ""
+			}
 		}
 	}
 	if count < 4 {
-		return nil // not enough times, likely false positive
+		return "" // not enough times, likely false positive
 	}
-	return seen
+	if seenOrig != "" && seenOrig != seen.String() {
+		return fmt.Sprintf("%s (%v)", seenOrig, seen)
+	}
+	return seen.String()
 }
 
 func anyRealUse(par *ssa.Parameter, pos int) bool {

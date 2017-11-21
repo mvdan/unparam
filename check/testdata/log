@@ -28,4 +28,7 @@ testdata/tags_main.go:5:23: oneUnusedMain - b is unused
 testdata/tags_main.go:24:22: multImplsMethod - f is unused
 testdata/usedas.go:49:22: UsedAsArg$4 - u is unused
 testdata/usedas.go:67:38: usedAsGlobalArgIface - i is unused
-testdata/values.go:5:23: receivesSameMany - r always receives 97
+testdata/values.go:5:23: receivesSameMany - f always receives 3
+testdata/values.go:12:26: receivesSameManyLit - r always receives 'a' (97)
+testdata/values.go:19:28: receivesSameManyNamed - f always receives FooConst (123)
+testdata/values.go:26:28: receivesSameManyMixed - f always receives 123

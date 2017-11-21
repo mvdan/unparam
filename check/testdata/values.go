@@ -2,10 +2,31 @@ package foo
 
 import "math/rand"
 
-func receivesSameMany(r rune) {
+func receivesSameMany(f FooType) {
+	doWork()
+	if f == 0 {
+		println(f)
+	}
+}
+
+func receivesSameManyLit(r rune) {
 	doWork()
 	if r == '0' {
 		println(r)
+	}
+}
+
+func receivesSameManyNamed(f FooType) {
+	doWork()
+	if f == 0 {
+		println(f)
+	}
+}
+
+func receivesSameManyMixed(f FooType) {
+	doWork()
+	if f == 1 {
+		println(f)
 	}
 }
 
@@ -40,10 +61,22 @@ func receivesCallExpr(r rune) {
 func randRune() rune { return rune(rand.Int31()) }
 
 func CallReceivers() {
-	receivesSameMany('a')
-	receivesSameMany('a')
-	receivesSameMany('a')
-	receivesSameMany('a')
+	receivesSameMany(3)
+	receivesSameMany(3)
+	receivesSameMany(3)
+	receivesSameMany(3)
+	receivesSameManyLit('a')
+	receivesSameManyLit('a')
+	receivesSameManyLit('a')
+	receivesSameManyLit('a')
+	receivesSameManyNamed(FooConst)
+	receivesSameManyNamed(FooConst)
+	receivesSameManyNamed(FooConst)
+	receivesSameManyNamed(FooConst)
+	receivesSameManyMixed(FooConst)
+	receivesSameManyMixed(FooConst)
+	receivesSameManyMixed(123)
+	receivesSameManyMixed(FooType(123))
 	receivesSameOnce('b')
 	receivesDifferent('a')
 	receivesDifferent('b')

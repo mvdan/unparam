@@ -17,7 +17,10 @@ var (
 )
 
 func TestUnusedParams(t *testing.T) {
-	warns, err := UnusedParams(true, false, *debug, "./testdata")
+	warns, err := UnusedParams(true, false, *debug,
+		"./testdata",
+		"./testdata/main",
+	)
 	if err != nil {
 		t.Fatal(err)
 	}

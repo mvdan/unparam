@@ -60,6 +60,11 @@ func receivesCallExpr(r rune) {
 
 func randRune() rune { return rune(rand.Int31()) }
 
+func withVariadic(s ...string) {
+	doWork()
+	println(len(s))
+}
+
 func CallReceivers() {
 	receivesSameMany(3)
 	receivesSameMany(3)
@@ -90,4 +95,5 @@ func CallReceivers() {
 	receivesCallExpr(randRune())
 	receivesCallExpr(randRune())
 	receivesCallExpr(randRune())
+	withVariadic()
 }

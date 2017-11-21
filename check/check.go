@@ -264,6 +264,7 @@ funcLoop:
 					// tools like errcheck anyway.
 					continue
 				}
+				count := 0
 				for _, edge := range callers {
 					val := edge.Site.Value()
 					if val == nil { // e.g. go statement
@@ -281,6 +282,10 @@ funcLoop:
 							continue resLoop // real use after extraction
 						}
 					}
+					count++
+				}
+				if count < 2 {
+					continue // require ignoring at least twice
 				}
 				name := paramDesc(i, res)
 				issues = append(issues, Issue{

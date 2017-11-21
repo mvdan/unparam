@@ -54,5 +54,7 @@ func returnResultsDirectly() (FooType, FooType) {
 
 func ReturnResultsCalls() {
 	_, Sink = returnResultsOwn()
+	_, Sink = returnResultsOwn()
+	_, Sink = returnResultsDirectly()
 	_, Sink = returnResultsDirectly()
 }

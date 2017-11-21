@@ -29,14 +29,15 @@ import (
 	"mvdan.cc/lint"
 )
 
-func UnusedParams(tests, debug bool, args ...string) ([]string, error) {
+func UnusedParams(tests, exported, debug bool, args ...string) ([]string, error) {
 	wd, err := os.Getwd()
 	if err != nil {
 		return nil, err
 	}
 	c := &Checker{
-		wd:    wd,
-		tests: tests,
+		wd:       wd,
+		tests:    tests,
+		exported: exported,
 	}
 	if debug {
 		c.debugLog = os.Stderr
@@ -51,6 +52,7 @@ type Checker struct {
 	wd string
 
 	tests    bool
+	exported bool
 	debugLog io.Writer
 
 	cachedDeclCounts map[string]map[string]int
@@ -152,6 +154,14 @@ funcLoop:
 		if info == nil { // not part of given pkgs
 			continue
 		}
+		if c.exported || fn.Pkg.Pkg.Name() == "main" {
+			// we want exported funcs, or this is a main
+			// package so nothing is exported
+		} else if strings.Contains(fn.Name(), "$") {
+			// anonymous function
+		} else if ast.IsExported(fn.Name()) {
+			continue // user doesn't want to change signatures here
+		}
 		fname := c.prog.Fset.Position(fn.Pos()).Filename
 		if genFiles[fname] {
 			continue // generated file
@@ -252,9 +262,7 @@ funcLoop:
 		}
 
 		callers := cg.Nodes[fn].In
-		// skip exported funcs, as well as those that are
-		// entirely unused
-		if !ast.IsExported(fn.Name()) && len(callers) > 0 && !allRetsExtracting {
+		if !allRetsExtracting {
 		resLoop:
 			for i := 0; i < results.Len(); i++ {
 				res := results.At(i)

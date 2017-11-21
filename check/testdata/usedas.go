@@ -1,15 +1,15 @@
 package foo
 
-func FuncAsParam(fn func(FooType) string) { fn(0) }
+func funcAsParam(fn func(FooType) string) { fn(0) }
 
-func PassedAsParam(f FooType) string {
+func passedAsParam(f FooType) string {
 	doWork()
 	return "foo"
 }
 
-func (f FooType) FuncAsParam2(fn func(FooType) []byte) { fn(0) }
+func (f FooType) funcAsParam2(fn func(FooType) []byte) { fn(0) }
 
-func PassedAsParam2(f FooType) []byte {
+func passedAsParam2(f FooType) []byte {
 	doWork()
 	return nil
 }
@@ -55,7 +55,7 @@ func globalParam(f func(f FooType, i int8)) {
 	f(7, 8)
 }
 
-func UsedAsGlobalArg(f FooType, i int8) {
+func usedAsGlobalArg(f FooType, i int8) {
 	doWork()
 	println(f)
 }
@@ -64,14 +64,14 @@ func globalParamIface(v interface{}) {
 	println(v)
 }
 
-func UsedAsGlobalArgIface(f FooType, i int16) {
+func usedAsGlobalArgIface(f FooType, i int16) {
 	doWork()
 	println(f)
 }
 
 func GlobArgUse() {
-	globalParam(UsedAsGlobalArg)
-	globalParamIface(UsedAsGlobalArgIface)
+	globalParam(usedAsGlobalArg)
+	globalParamIface(usedAsGlobalArgIface)
 }
 
 type barIface interface {
@@ -92,7 +92,7 @@ func BarIfaceUse() {
 	b.bar(0, 1)
 }
 
-func (f FooType) MethodPassedAsParam(f2 FooType) bool {
+func (f FooType) methodPassedAsParam(f2 FooType) bool {
 	if f == 3 {
 		doWork()
 		return true
@@ -100,7 +100,7 @@ func (f FooType) MethodPassedAsParam(f2 FooType) bool {
 	return true
 }
 
-func (f FooType) MethodPassedAsParam2() bool {
+func (f FooType) methodPassedAsParam2() bool {
 	if f == 4 {
 		doWork()
 		return true
@@ -108,11 +108,11 @@ func (f FooType) MethodPassedAsParam2() bool {
 	return true
 }
 
-func MethodUsedAsArg() {
+func methodUsedAsArg() {
 	foo := func(f func(f FooType) bool) {
 		f(2)
 	}
 	var f FooType
-	foo(f.MethodPassedAsParam)
-	foo((FooType).MethodPassedAsParam2)
+	foo(f.methodPassedAsParam)
+	foo((FooType).methodPassedAsParam2)
 }

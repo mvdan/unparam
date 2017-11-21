@@ -1,11 +1,11 @@
 package foo
 
-func SingleReturn() int {
+func singleReturn() int {
 	doWork()
 	return 3
 }
 
-func ManyReturns() int {
+func manyReturns() int {
 	if cond {
 		doWork()
 		return 3
@@ -13,7 +13,7 @@ func ManyReturns() int {
 	return 3
 }
 
-func ManyReturnsDifferent(b bool) int {
+func manyReturnsDifferent(b bool) int {
 	for cond {
 		doWork()
 		if b {
@@ -23,7 +23,7 @@ func ManyReturnsDifferent(b bool) int {
 	return 3
 }
 
-func ManyReturnsMultiple() (b bool, s string) {
+func manyReturnsMultiple() (b bool, s string) {
 	if cond {
 		doWork()
 		return true, "foo"

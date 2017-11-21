@@ -1,6 +1,6 @@
 package foo
 
-func Parent() {
+func parent() {
 	oneUnused := func(f FooType) {
 		doWork()
 	}

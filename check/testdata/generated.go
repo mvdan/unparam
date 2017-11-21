@@ -2,7 +2,7 @@
 
 package foo
 
-func OneUnusedGenerated(a, b FooType) FooType {
+func oneUnusedGenerated(a, b FooType) FooType {
 	a += 1
 	return a
 }

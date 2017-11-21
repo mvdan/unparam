@@ -6,11 +6,11 @@ import (
 	"net/http"
 )
 
-func DummyImpl(f FooType) {}
+func dummyImpl(f FooType) {}
 
-func PanicImpl(f FooType) { panic("dummy") }
+func panicImpl(f FooType) { panic("dummy") }
 
-func NonPanicImpl(w http.ResponseWriter, f FooType) {
+func nonPanicImpl(w http.ResponseWriter, f FooType) {
 	for i := 0; i < 10; i++ {
 		w.Write([]byte("foo"))
 	}
@@ -19,7 +19,7 @@ func NonPanicImpl(w http.ResponseWriter, f FooType) {
 
 func throw(v ...interface{}) {}
 
-func ThrowImpl(f FooType) { throw("dummy") }
+func throwImpl(f FooType) { throw("dummy") }
 
 func endlessLoop(w http.ResponseWriter) {
 	for {
@@ -27,31 +27,31 @@ func endlessLoop(w http.ResponseWriter) {
 	}
 }
 
-func NonPanicImpl2(w http.ResponseWriter, f FooType) {
+func nonPanicImpl2(w http.ResponseWriter, f FooType) {
 	endlessLoop(w)
 	panic("unreachable")
 }
 
-func ZeroImpl(f FooType) (int, string, []byte) { return 0, "", nil }
+func zeroImpl(f FooType) (int, string, []byte) { return 0, "", nil }
 
-func ErrorsImpl(f FooType) error { return errors.New("unimpl") }
+func errorsImpl(f FooType) error { return errors.New("unimpl") }
 
-const ConstFoo = FooType(123)
+const constFoo = FooType(123)
 
 func (f FooType) Error() string { return "foo" }
 
-func CustomErrImpl(f FooType) error { return ConstFoo }
+func customErrImpl(f FooType) error { return constFoo }
 
-func NonConstImpl(f FooType, s string) error { return Sink.(error) }
+func nonConstImpl(f FooType, s string) error { return Sink.(error) }
 
-func LogImpl(f FooType) { log.Print("not implemented") }
+func logImpl(f FooType) { log.Print("not implemented") }
 
-func OneOverwritten(a FooType, i uint8) (FooType, uint8) {
+func oneOverwritten(a FooType, i uint8) (FooType, uint8) {
 	i = 3
 	a += 1
 	return a, i
 }
 
-func ZeroStructImpl(f FooStruct) FooStruct {
+func zeroStructImpl(f FooStruct) FooStruct {
 	return FooStruct{}
 }

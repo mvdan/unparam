@@ -1,11 +1,11 @@
 package foo
 
-func RegularName(f FooType) { doWork() }
+func regularName(f FooType) { doWork() }
 
-func NoName(FooType) { doWork() }
+func noName(FooType) { doWork() }
 
-func UnderscoreName(_ FooType) { doWork() }
+func underscoreName(_ FooType) { doWork() }
 
-func ZeroSizeStruct(f struct{}) { doWork() }
+func zeroSizeStruct(f struct{}) { doWork() }
 
-func ZeroSizeArray(f [0]bool) { doWork() }
+func zeroSizeArray(f [0]bool) { doWork() }

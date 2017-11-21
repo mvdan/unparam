@@ -8,6 +8,7 @@ testdata/ignoredrets.go:26:27: singleIgnoredName - result r is never used
 testdata/ignoredrets.go:36:20: allIgnored - result 0 (int) is never used
 testdata/ignoredrets.go:36:25: allIgnored - result 1 (string) is never used
 testdata/ignoredrets.go:46:26: someIgnored - result 1 (string) is never used
+testdata/ignoredrets.go:71:29: ignoredGoDefer - result 1 (string) is never used
 testdata/methods.go:5:28: (FooType).oneUnused - a is unused
 testdata/names.go:3:18: regularName - f is unused
 testdata/reused.go:3:24: reusedRecursively - f is unused

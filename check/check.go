@@ -288,6 +288,7 @@ funcLoop:
 				for _, edge := range callers {
 					val := edge.Site.Value()
 					if val == nil { // e.g. go statement
+						count++
 						continue
 					}
 					for _, instr := range *val.Referrers() {

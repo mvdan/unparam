@@ -67,3 +67,15 @@ func ErrorIgnoredUse() {
 	i, _ := errorIgnored()
 	println(i)
 }
+
+func ignoredGoDefer() (int, string) {
+	doWork()
+	return 2, "bar"
+}
+
+func IgnoredGoDeferUse() {
+	go ignoredGoDefer()
+	defer ignoredGoDefer()
+	i, _ := ignoredGoDefer()
+	println(i)
+}

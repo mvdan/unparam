@@ -511,7 +511,9 @@ func (c *Checker) declCounts(pkgDir string, pkgName string) map[string]int {
 	fset := token.NewFileSet()
 	pkgs, err := parser.ParseDir(fset, pkgDir, nil, 0)
 	if err != nil {
-		panic(err.Error())
+		println(err.Error())
+		c.cachedDeclCounts[pkgDir] = map[string]int{}
+		return map[string]int{}
 	}
 	pkg := pkgs[pkgName]
 	count := make(map[string]int)

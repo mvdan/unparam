@@ -6,7 +6,10 @@ package main // import "mvdan.cc/unparam"
 import (
 	"flag"
 	"fmt"
+	"go/build"
 	"os"
+
+	"golang.org/x/tools/go/buildutil"
 
 	"mvdan.cc/unparam/check"
 )
@@ -16,6 +19,11 @@ var (
 	exported = flag.Bool("exported", false, "inspect exported functions")
 	debug    = flag.Bool("debug", false, "debug prints")
 )
+
+func init() {
+	flag.Var((*buildutil.TagsFlag)(&build.Default.BuildTags), "tags",
+		buildutil.TagsFlagDoc)
+}
 
 func main() {
 	flag.Usage = func() {

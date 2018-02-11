@@ -264,6 +264,7 @@ funcLoop:
 			}
 			numRets++
 		}
+		callers := cg.Nodes[fn].In
 		for i, val := range seenConsts {
 			if val == nil || numRets < 2 {
 				// no consistent returned constant, or
@@ -275,6 +276,9 @@ funcLoop:
 			if *val != nil {
 				valStr = (*val).String()
 			}
+			if calledInReturn(callers) {
+				continue
+			}
 			res := results.At(i)
 			name := paramDesc(i, res)
 			issues = append(issues, Issue{
@@ -284,7 +288,6 @@ funcLoop:
 			})
 		}
 
-		callers := cg.Nodes[fn].In
 	resLoop:
 		for i := 0; i < results.Len(); i++ {
 			if allRetsExtracting {
@@ -367,6 +370,21 @@ funcLoop:
 		return p1.Filename < p2.Filename
 	})
 	return issues, nil
+}
+
+func calledInReturn(callers []*callgraph.Edge) bool {
+	for _, edge := range callers {
+		val := edge.Site.Value()
+		if val == nil { // e.g. go statement
+			continue
+		}
+		for _, instr := range *val.Referrers() {
+			if _, ok := instr.(*ssa.Return); ok {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func nodeStr(node ast.Node) string {

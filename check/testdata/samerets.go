@@ -43,3 +43,16 @@ func manyNilError() (bool, error) {
 	}
 	return true, nil
 }
+
+func manyReturnsForwarded(r rune) int {
+	if r == '3' {
+		return 5
+	}
+	doWork()
+	return 5
+}
+
+func forwarding(r rune) int {
+	doWork()
+	return manyReturnsForwarded(r)
+}

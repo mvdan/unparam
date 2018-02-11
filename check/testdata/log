@@ -18,6 +18,7 @@ testdata/reused.go:29:43: reusedRecursivelyVariadic - bs is unused
 testdata/samerets.go:8:20: manyReturns - result 0 (int) is always 3
 testdata/samerets.go:26:29: manyReturnsMultiple - result b is always true
 testdata/samerets.go:26:37: manyReturnsMultiple - result s is always "foo"
+testdata/samerets.go:34:30: singleNilError - result 1 (error) is always nil
 testdata/samerets.go:39:28: manyNilError - result 1 (error) is always nil
 testdata/simple.go:5:19: oneUnused - b is unused
 testdata/simple.go:10:19: structUnused - f is unused

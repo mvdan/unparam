@@ -266,10 +266,13 @@ funcLoop:
 		}
 		callers := cg.Nodes[fn].In
 		for i, val := range seenConsts {
-			if val == nil || numRets < 2 {
-				// no consistent returned constant, or
-				// just one return (too many false
-				// positives)
+			if val == nil {
+				// no consistent returned constant
+				continue
+			}
+			if *val != nil && numRets == 1 {
+				// just one non-nil return (too many
+				// false positives)
 				continue
 			}
 			valStr := "nil" // always returned untyped nil

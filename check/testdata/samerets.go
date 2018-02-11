@@ -30,3 +30,16 @@ func manyReturnsMultiple() (b bool, s string) {
 	}
 	return true, "foo"
 }
+
+func singleNilError() (bool, error) {
+	doWork()
+	return true, nil
+}
+
+func manyNilError() (bool, error) {
+	if cond {
+		doWork()
+		return false, nil
+	}
+	return true, nil
+}

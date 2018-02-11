@@ -128,6 +128,13 @@ func generatedDoc(text string) bool {
 		strings.Contains(text, "DO NOT EDIT")
 }
 
+func eqlConsts(v1, v2 constant.Value) bool {
+	if v1 == nil || v2 == nil {
+		return v1 == v2
+	}
+	return constant.Compare(v1, token.EQL, v2)
+}
+
 var stdSizes = types.SizesFor("gc", "amd64")
 
 func (c *Checker) Check() ([]lint.Issue, error) {
@@ -214,7 +221,7 @@ funcLoop:
 		}
 
 		results := fn.Signature.Results()
-		seenConsts := make([]constant.Value, results.Len())
+		seenConsts := make([]*constant.Value, results.Len())
 		seenParams := make([]*ssa.Parameter, results.Len())
 		numRets := 0
 		allRetsExtracting := true
@@ -231,9 +238,9 @@ funcLoop:
 					seenParams[i] = nil
 					switch {
 					case numRets == 0:
-						seenConsts[i] = x.Value
+						seenConsts[i] = &x.Value
 					case seenConsts[i] == nil:
-					case !constant.Compare(seenConsts[i], token.EQL, x.Value):
+					case !eqlConsts(*seenConsts[i], x.Value):
 						seenConsts[i] = nil
 					}
 				case *ssa.Parameter:
@@ -259,14 +266,21 @@ funcLoop:
 		}
 		for i, val := range seenConsts {
 			if val == nil || numRets < 2 {
+				// no consistent returned constant, or
+				// just one return (too many false
+				// positives)
 				continue
+			}
+			valStr := "nil" // always returned untyped nil
+			if *val != nil {
+				valStr = (*val).String()
 			}
 			res := results.At(i)
 			name := paramDesc(i, res)
 			issues = append(issues, Issue{
 				pos:   res.Pos(),
 				fname: fn.RelString(fn.Package().Pkg),
-				msg:   fmt.Sprintf("result %s is always %s", name, val.String()),
+				msg:   fmt.Sprintf("result %s is always %s", name, valStr),
 			})
 		}
 
@@ -395,7 +409,7 @@ func (c *Checker) receivesSameValues(in []*callgraph.Edge, par *ssa.Parameter, p
 			seen = cnst.Value // first constant
 			seenOrig = origArg
 			count = 1
-		} else if !constant.Compare(seen, token.EQL, cnst.Value) {
+		} else if !eqlConsts(seen, cnst.Value) {
 			return "" // different constants
 		} else {
 			count++

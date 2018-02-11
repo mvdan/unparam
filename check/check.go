@@ -382,8 +382,17 @@ func calledInReturn(callers []*callgraph.Edge) bool {
 			continue
 		}
 		for _, instr := range *val.Referrers() {
-			if _, ok := instr.(*ssa.Return); ok {
+			switch x := instr.(type) {
+			case *ssa.Return:
 				return true
+			case *ssa.Extract:
+				refs := *x.Referrers()
+				if len(refs) != 1 {
+					break
+				}
+				if _, ok := refs[0].(*ssa.Return); ok {
+					return true
+				}
 			}
 		}
 	}

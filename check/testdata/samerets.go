@@ -56,3 +56,13 @@ func forwarding(r rune) int {
 	doWork()
 	return manyReturnsForwarded(r)
 }
+
+func doubleReturnForwarded() (int, error) {
+	doWork()
+	return 5, nil
+}
+
+func forwardingDouble() (int, error) {
+	doWork()
+	return doubleReturnForwarded()
+}

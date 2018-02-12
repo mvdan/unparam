@@ -23,6 +23,7 @@ import (
 
 	"golang.org/x/tools/go/callgraph"
 	"golang.org/x/tools/go/callgraph/cha"
+	"golang.org/x/tools/go/callgraph/rta"
 	"golang.org/x/tools/go/loader"
 	"golang.org/x/tools/go/ssa"
 	"golang.org/x/tools/go/ssa/ssautil"
@@ -31,7 +32,7 @@ import (
 	"mvdan.cc/lint"
 )
 
-func UnusedParams(tests, exported, debug bool, args ...string) ([]string, error) {
+func UnusedParams(tests bool, algo string, exported, debug bool, args ...string) ([]string, error) {
 	wd, err := os.Getwd()
 	if err != nil {
 		return nil, err
@@ -39,6 +40,7 @@ func UnusedParams(tests, exported, debug bool, args ...string) ([]string, error)
 	c := &Checker{
 		wd:       wd,
 		tests:    tests,
+		algo:     algo,
 		exported: exported,
 	}
 	if debug {
@@ -54,6 +56,7 @@ type Checker struct {
 	wd string
 
 	tests    bool
+	algo     string
 	exported bool
 	debugLog io.Writer
 
@@ -157,7 +160,24 @@ func (c *Checker) Check() ([]lint.Issue, error) {
 			})
 		}
 	}
-	cg := cha.CallGraph(c.prog)
+	var cg *callgraph.Graph
+	switch c.algo {
+	case "cha":
+		cg = cha.CallGraph(c.prog)
+	case "rta":
+		mains, err := mainPackages(c.prog, wantPkg)
+		if err != nil {
+			return nil, err
+		}
+		var roots []*ssa.Function
+		for _, main := range mains {
+			roots = append(roots, main.Func("init"), main.Func("main"))
+		}
+		result := rta.Analyze(roots, true)
+		cg = result.CallGraph
+	default:
+		return nil, fmt.Errorf("unknown call graph construction algorithm: %q", c.algo)
+	}
 
 	var issues []lint.Issue
 funcLoop:
@@ -191,7 +211,11 @@ funcLoop:
 			c.debug("  skip - dummy implementation\n")
 			continue
 		}
-		for _, edge := range cg.Nodes[fn].In {
+		var callers []*callgraph.Edge
+		if node := cg.Nodes[fn]; node != nil {
+			callers = node.In
+		}
+		for _, edge := range callers {
 			call := edge.Site.Value()
 			if receivesExtractedArgs(fn.Signature, call) {
 				// called via function(results())
@@ -266,7 +290,6 @@ funcLoop:
 			}
 			numRets++
 		}
-		callers := cg.Nodes[fn].In
 		for i, val := range seenConsts {
 			if val == nil {
 				// no consistent returned constant
@@ -352,7 +375,7 @@ funcLoop:
 				continue
 			}
 			reason := "is unused"
-			if valStr := c.receivesSameValues(cg.Nodes[fn].In, par, i); valStr != "" {
+			if valStr := c.receivesSameValues(callers, par, i); valStr != "" {
 				reason = fmt.Sprintf("always receives %s", valStr)
 			} else if anyRealUse(par, i) {
 				c.debug("  skip - used somewhere in the func body\n")
@@ -375,6 +398,20 @@ funcLoop:
 		return p1.Filename < p2.Filename
 	})
 	return issues, nil
+}
+
+func mainPackages(prog *ssa.Program, wantPkg map[*types.Package]*loader.PackageInfo) ([]*ssa.Package, error) {
+	mains := make([]*ssa.Package, 0, len(wantPkg))
+	for tpkg := range wantPkg {
+		pkg := prog.Package(tpkg)
+		if tpkg.Name() == "main" && pkg.Func("main") != nil {
+			mains = append(mains, pkg)
+		}
+	}
+	if len(mains) == 0 {
+		return nil, fmt.Errorf("no main packages")
+	}
+	return mains, nil
 }
 
 func calledInReturn(callers []*callgraph.Edge) bool {

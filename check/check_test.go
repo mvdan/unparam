@@ -16,8 +16,8 @@ var (
 	debug = flag.Bool("debug", false, "debug prints")
 )
 
-func TestUnusedParams(t *testing.T) {
-	warns, err := UnusedParams(true, false, *debug,
+func TestCHA(t *testing.T) {
+	warns, err := UnusedParams(true, "cha", false, *debug,
 		"./testdata",
 		"./testdata/main",
 	)
@@ -40,5 +40,22 @@ func TestUnusedParams(t *testing.T) {
 	want := string(wantBs)
 	if got != want {
 		t.Fatalf("Unexpected output. Want:\n%sGot:\n%s", want, got)
+	}
+}
+
+func TestRTA(t *testing.T) {
+	warns, err := UnusedParams(true, "rta", false, *debug,
+		"./testdata/main",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := strings.Join(warns, "\n")
+	want := strings.TrimSpace(`
+testdata/main/main.go:3:19: OneUnused - b is unused
+testdata/main/main.go:10:24: mightImplement - b is unused
+	`)
+	if got != want {
+		t.Fatalf("want:\n%s\ngot:\n%s", want, got)
 	}
 }

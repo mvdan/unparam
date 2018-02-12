@@ -162,10 +162,12 @@ func (c *Checker) Check() ([]lint.Issue, error) {
 	var issues []lint.Issue
 funcLoop:
 	for fn := range ssautil.AllFunctions(c.prog) {
-		if fn.Pkg == nil { // builtin?
+		switch {
+		case fn.Pkg == nil: // builtin?
 			continue
-		}
-		if len(fn.Blocks) == 0 { // stub
+		case fn.Name() == "init":
+			continue
+		case len(fn.Blocks) == 0: // stub
 			continue
 		}
 		info := wantPkg[fn.Pkg.Pkg]
@@ -515,8 +517,9 @@ func dummyImpl(blk *ssa.BasicBlock) bool {
 		for _, val := range instr.Operands(ops[:0]) {
 			switch x := (*val).(type) {
 			case nil, *ssa.Const, *ssa.ChangeType, *ssa.Alloc,
-				*ssa.MakeInterface, *ssa.Function,
-				*ssa.Global, *ssa.IndexAddr, *ssa.Slice,
+				*ssa.MakeInterface, *ssa.MakeMap,
+				*ssa.Function, *ssa.Global,
+				*ssa.IndexAddr, *ssa.Slice,
 				*ssa.UnOp, *ssa.Parameter:
 			case *ssa.Call:
 				if rxHarmlessCall.MatchString(x.Call.Value.String()) {

@@ -55,3 +55,11 @@ func oneOverwritten(a FooType, i uint8) (FooType, uint8) {
 func zeroStructImpl(f FooStruct) FooStruct {
 	return FooStruct{}
 }
+
+func zeroMapImpl(f FooStruct) map[int]int {
+	return map[int]int{}
+}
+
+func zeroMapMakeImpl(f FooStruct) map[int]int {
+	return make(map[int]int, 0)
+}

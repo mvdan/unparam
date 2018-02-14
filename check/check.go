@@ -420,19 +420,28 @@ func calledInReturn(callers []*callgraph.Edge) bool {
 		if val == nil { // e.g. go statement
 			continue
 		}
-		for _, instr := range *val.Referrers() {
+		refs := *val.Referrers()
+		if len(refs) == 0 { // no use of return values
+			continue
+		}
+		allReturnExtracts := true
+		for _, instr := range refs {
 			switch x := instr.(type) {
 			case *ssa.Return:
 				return true
 			case *ssa.Extract:
 				refs := *x.Referrers()
 				if len(refs) != 1 {
+					allReturnExtracts = false
 					break
 				}
-				if _, ok := refs[0].(*ssa.Return); ok {
-					return true
+				if _, ok := refs[0].(*ssa.Return); !ok {
+					allReturnExtracts = false
 				}
 			}
+		}
+		if allReturnExtracts {
+			return true
 		}
 	}
 	return false

@@ -66,3 +66,25 @@ func forwardingDouble() (int, error) {
 	doWork()
 	return doubleReturnForwarded()
 }
+
+func doubleReturnNotForwarded() (int, error) {
+	doWork()
+	return 5, nil
+}
+
+func falseForwardinggDouble() (int, error) {
+	doWork()
+	n, err := doubleReturnNotForwarded()
+	println(n)
+	return 2, err
+}
+
+func neverForwarded() (int, error) {
+	doWork()
+	return 5, nil
+}
+
+func neverForwarding() {
+	doWork()
+	neverForwarded()
+}

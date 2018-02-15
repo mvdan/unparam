@@ -211,11 +211,11 @@ funcLoop:
 			c.debug("  skip - dummy implementation\n")
 			continue
 		}
-		var callers []*callgraph.Edge
+		var calls []*callgraph.Edge
 		if node := cg.Nodes[fn]; node != nil {
-			callers = node.In
+			calls = node.In
 		}
-		for _, edge := range callers {
+		for _, edge := range calls {
 			call := edge.Site.Value()
 			if receivesExtractedArgs(fn.Signature, call) {
 				// called via function(results())
@@ -304,7 +304,7 @@ funcLoop:
 			if *val != nil {
 				valStr = (*val).String()
 			}
-			if calledInReturn(callers) {
+			if calledInReturn(calls) {
 				continue
 			}
 			res := results.At(i)
@@ -329,7 +329,7 @@ funcLoop:
 				continue
 			}
 			count := 0
-			for _, edge := range callers {
+			for _, edge := range calls {
 				val := edge.Site.Value()
 				if val == nil { // e.g. go statement
 					count++
@@ -375,7 +375,7 @@ funcLoop:
 				continue
 			}
 			reason := "is unused"
-			if valStr := c.receivesSameValues(callers, par, i); valStr != "" {
+			if valStr := c.receivesSameValues(calls, par, i); valStr != "" {
 				reason = fmt.Sprintf("always receives %s", valStr)
 			} else if anyRealUse(par, i) {
 				c.debug("  skip - used somewhere in the func body\n")
@@ -414,8 +414,11 @@ func mainPackages(prog *ssa.Program, wantPkg map[*types.Package]*loader.PackageI
 	return mains, nil
 }
 
-func calledInReturn(callers []*callgraph.Edge) bool {
-	for _, edge := range callers {
+func calledInReturn(calls []*callgraph.Edge) bool {
+	for _, edge := range calls {
+		if edge.Pos() == token.NoPos { // generated call
+			continue
+		}
 		val := edge.Site.Value()
 		if val == nil { // e.g. go statement
 			continue

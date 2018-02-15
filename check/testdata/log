@@ -22,6 +22,7 @@ testdata/samerets.go:34:30: singleNilError - result 1 (error) is always nil
 testdata/samerets.go:39:28: manyNilError - result 1 (error) is always nil
 testdata/samerets.go:70:39: doubleReturnNotForwarded - result 1 (error) is always nil
 testdata/samerets.go:82:29: neverForwarded - result 1 (error) is always nil
+testdata/samerets.go:87:50: (FooType).neverForwardedPtrMethod - result 1 (error) is always nil
 testdata/simple.go:5:19: oneUnused - b is unused
 testdata/simple.go:10:19: structUnused - f is unused
 testdata/simple_test.go:3:20: oneUnused2 - b is unused

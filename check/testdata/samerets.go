@@ -84,7 +84,14 @@ func neverForwarded() (int, error) {
 	return 5, nil
 }
 
+func (f FooType) neverForwardedPtrMethod() (int, error) {
+	doWork()
+	return 5, nil
+}
+
 func neverForwarding() {
 	doWork()
 	neverForwarded()
+	f := new(FooType)
+	f.neverForwardedPtrMethod()
 }

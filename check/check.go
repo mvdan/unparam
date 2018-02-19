@@ -178,6 +178,7 @@ func (c *Checker) Check() ([]lint.Issue, error) {
 	default:
 		return nil, fmt.Errorf("unknown call graph construction algorithm: %q", c.algo)
 	}
+	cg.DeleteSyntheticNodes()
 
 	var issues []lint.Issue
 funcLoop:
@@ -219,16 +220,6 @@ funcLoop:
 			call := edge.Site.Value()
 			if receivesExtractedArgs(fn.Signature, call) {
 				// called via function(results())
-				c.debug("  skip - type is required via call\n")
-				continue funcLoop
-			}
-			caller := edge.Caller.Func
-			switch {
-			case len(caller.FreeVars) == 1 && strings.HasSuffix(caller.Name(), "$bound"):
-				// passing method via someFunc(type.method)
-				fallthrough
-			case len(caller.FreeVars) == 0 && strings.HasSuffix(caller.Name(), "$thunk"):
-				// passing method via someFunc(recv.method)
 				c.debug("  skip - type is required via call\n")
 				continue funcLoop
 			}
@@ -416,9 +407,6 @@ func mainPackages(prog *ssa.Program, wantPkg map[*types.Package]*loader.PackageI
 
 func calledInReturn(calls []*callgraph.Edge) bool {
 	for _, edge := range calls {
-		if edge.Pos() == token.NoPos { // generated call
-			continue
-		}
 		val := edge.Site.Value()
 		if val == nil { // e.g. go statement
 			continue
@@ -648,9 +636,6 @@ func (c *Checker) multipleImpls(info *loader.PackageInfo, fn *ssa.Function) bool
 		return false
 	}
 	path := c.prog.Fset.Position(fn.Pos()).Filename
-	if path == "" { // generated func, like init
-		return false
-	}
 	count := c.declCounts(filepath.Dir(path), info.Pkg.Name())
 	name := fn.Name()
 	if fn.Signature.Recv() != nil {

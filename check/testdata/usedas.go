@@ -60,18 +60,29 @@ func usedAsGlobalArg(f FooType, i int8) {
 	println(f)
 }
 
-func globalParamIface(v interface{}) {
-	println(v)
+func paramIfaceNothing(f interface{}) {
+	println(f)
 }
 
-func usedAsGlobalArgIface(f FooType, i int16) {
+func usedAsIfaceNothing(f FooType, i int16) {
+	doWork()
+	println(f)
+}
+
+func paramIfaceAssert(f interface{}) {
+	fn := f.(func(FooType, *rune))
+	fn(2, nil)
+}
+
+func usedAsIfaceAssert(f FooType, i *rune) {
 	doWork()
 	println(f)
 }
 
 func GlobArgUse() {
 	globalParam(usedAsGlobalArg)
-	globalParamIface(usedAsGlobalArgIface)
+	paramIfaceNothing(usedAsIfaceNothing)
+	paramIfaceAssert(usedAsIfaceAssert)
 }
 
 type barIface interface {

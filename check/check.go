@@ -181,7 +181,6 @@ func (c *Checker) Check() ([]lint.Issue, error) {
 	cg.DeleteSyntheticNodes()
 
 	var issues []lint.Issue
-funcLoop:
 	for fn := range ssautil.AllFunctions(c.prog) {
 		switch {
 		case fn.Pkg == nil: // builtin?
@@ -216,21 +215,9 @@ funcLoop:
 		if node := cg.Nodes[fn]; node != nil {
 			calls = node.In
 		}
-		for _, edge := range calls {
-			call := edge.Site.Value()
-			if receivesExtractedArgs(fn.Signature, call) {
-				// called via function(results())
-				c.debug("  skip - type is required via call\n")
-				continue funcLoop
-			}
-			switch edge.Site.Common().Value.(type) {
-			case *ssa.Function:
-			default:
-				// called via a parameter or field, type
-				// is set in stone.
-				c.debug("  skip - type is required via call\n")
-				continue funcLoop
-			}
+		if requiredViaCall(fn, calls) {
+			c.debug("  skip - type is required via call\n")
+			continue
 		}
 		if c.multipleImpls(info, fn) {
 			c.debug("  skip - multiple implementations via build tags\n")
@@ -681,4 +668,21 @@ func paramDesc(i int, v *types.Var) string {
 		return name
 	}
 	return fmt.Sprintf("%d (%s)", i, v.Type().String())
+}
+
+func requiredViaCall(fn *ssa.Function, calls []*callgraph.Edge) bool {
+	for _, edge := range calls {
+		call := edge.Site.Value()
+		if receivesExtractedArgs(fn.Signature, call) {
+			// called via function(results())
+			return true
+		}
+		_, ok := edge.Site.Common().Value.(*ssa.Function)
+		if !ok {
+			// called via a parameter or field, type
+			// is set in stone.
+			return true
+		}
+	}
+	return false
 }

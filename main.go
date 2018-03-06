@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	algo     = flag.String("algo", "cha", `call graph construction algorithm (cha, rta).
+	algo = flag.String("algo", "cha", `call graph construction algorithm (cha, rta).
 in general, use cha for libraries, and rta for programs with main packages.`)
 	tests    = flag.Bool("tests", true, "include tests")
 	exported = flag.Bool("exported", false, "inspect exported functions")

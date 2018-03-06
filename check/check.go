@@ -664,7 +664,7 @@ func receivesExtractedArgs(sign *types.Signature, call *ssa.Call) bool {
 
 func paramDesc(i int, v *types.Var) string {
 	name := v.Name()
-	if name != "" {
+	if name != "" && name != "_" {
 		return name
 	}
 	return fmt.Sprintf("%d (%s)", i, v.Type().String())

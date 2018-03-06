@@ -33,6 +33,16 @@ func SingleIgnoredNameUse() {
 	_ = singleIgnoredName()
 }
 
+func singleIgnoredUnderscore() (_ rune) {
+	doWork()
+	return '0'
+}
+
+func SingleIgnoredUnderscoreUse() {
+	singleIgnoredUnderscore()
+	_ = singleIgnoredUnderscore()
+}
+
 func allIgnored() (int, string) {
 	doWork()
 	return 2, "foo"

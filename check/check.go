@@ -590,8 +590,8 @@ func (c *Checker) declCounts(pkgDir string, pkgName string) map[string]int {
 	count := make(map[string]int)
 	for _, file := range pkg.Files {
 		for _, decl := range file.Decls {
-			fd, _ := decl.(*ast.FuncDecl)
-			if fd == nil {
+			fd, ok := decl.(*ast.FuncDecl)
+			if !ok {
 				continue
 			}
 			name := astPrefix(fd.Recv) + fd.Name.Name
@@ -608,8 +608,8 @@ func astPrefix(recv *ast.FieldList) string {
 	}
 	expr := recv.List[0].Type
 	for {
-		star, _ := expr.(*ast.StarExpr)
-		if star == nil {
+		star, ok := expr.(*ast.StarExpr)
+		if !ok {
 			break
 		}
 		expr = star.X
@@ -628,11 +628,11 @@ func (c *Checker) multipleImpls(info *loader.PackageInfo, fn *ssa.Function) bool
 	if fn.Signature.Recv() != nil {
 		tp := fn.Params[0].Type()
 		for {
-			point, _ := tp.(*types.Pointer)
-			if point == nil {
+			ptr, ok := tp.(*types.Pointer)
+			if !ok {
 				break
 			}
-			tp = point.Elem()
+			tp = ptr.Elem()
 		}
 		named := tp.(*types.Named)
 		name = named.Obj().Name() + "." + name
@@ -677,8 +677,7 @@ func requiredViaCall(fn *ssa.Function, calls []*callgraph.Edge) bool {
 			// called via function(results())
 			return true
 		}
-		_, ok := edge.Site.Common().Value.(*ssa.Function)
-		if !ok {
+		if _, ok := edge.Site.Common().Value.(*ssa.Function); !ok {
 			// called via a parameter or field, type
 			// is set in stone.
 			return true

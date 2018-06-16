@@ -32,6 +32,8 @@ import (
 	"mvdan.cc/lint"
 )
 
+// UnusedParams returns a list of issues that point out unused function
+// parameters.
 func UnusedParams(tests bool, algo string, exported, debug bool, args ...string) ([]string, error) {
 	wd, err := os.Getwd()
 	if err != nil {
@@ -72,6 +74,7 @@ var (
 	errorType = types.Universe.Lookup("error").Type()
 )
 
+// lines runs the checker and returns the list of readable issues.
 func (c *Checker) lines(args ...string) ([]string, error) {
 	paths := gotool.ImportPaths(args)
 	conf := loader.Config{
@@ -126,11 +129,14 @@ func (c *Checker) debug(format string, a ...interface{}) {
 	}
 }
 
+// generatedDoc reports whether a comment text describes its file as being code
+// generated.
 func generatedDoc(text string) bool {
 	return strings.Contains(text, "Code generated") ||
 		strings.Contains(text, "DO NOT EDIT")
 }
 
+// eqlConsts reports whether two constant values, possibly nil, are equal.
 func eqlConsts(v1, v2 constant.Value) bool {
 	if v1 == nil || v2 == nil {
 		return v1 == v2
@@ -140,6 +146,8 @@ func eqlConsts(v1, v2 constant.Value) bool {
 
 var stdSizes = types.SizesFor("gc", "amd64")
 
+// Check runs the unused parameter check and returns the list of found issues,
+// and any error encountered.
 func (c *Checker) Check() ([]lint.Issue, error) {
 	c.cachedDeclCounts = make(map[string]map[string]int)
 	c.callByPos = make(map[token.Pos]*ast.CallExpr)
@@ -211,11 +219,11 @@ func (c *Checker) Check() ([]lint.Issue, error) {
 			c.debug("  skip - dummy implementation\n")
 			continue
 		}
-		var calls []*callgraph.Edge
+		var inboundCalls []*callgraph.Edge
 		if node := cg.Nodes[fn]; node != nil {
-			calls = node.In
+			inboundCalls = node.In
 		}
-		if requiredViaCall(fn, calls) {
+		if requiredViaCall(fn, inboundCalls) {
 			c.debug("  skip - type is required via call\n")
 			continue
 		}
@@ -282,7 +290,7 @@ func (c *Checker) Check() ([]lint.Issue, error) {
 			if *val != nil {
 				valStr = (*val).String()
 			}
-			if calledInReturn(calls) {
+			if calledInReturn(inboundCalls) {
 				continue
 			}
 			res := results.At(i)
@@ -307,7 +315,7 @@ func (c *Checker) Check() ([]lint.Issue, error) {
 				continue
 			}
 			count := 0
-			for _, edge := range calls {
+			for _, edge := range inboundCalls {
 				val := edge.Site.Value()
 				if val == nil { // e.g. go statement
 					count++
@@ -353,8 +361,9 @@ func (c *Checker) Check() ([]lint.Issue, error) {
 				continue
 			}
 			reason := "is unused"
-			if valStr := c.receivesSameValues(calls, par, i); valStr != "" {
-				reason = fmt.Sprintf("always receives %s", valStr)
+			constStr := c.alwaysReceivedConst(inboundCalls, par, i)
+			if constStr != "" {
+				reason = fmt.Sprintf("always receives %s", constStr)
 			} else if anyRealUse(par, i) {
 				c.debug("  skip - used somewhere in the func body\n")
 				continue
@@ -378,9 +387,10 @@ func (c *Checker) Check() ([]lint.Issue, error) {
 	return issues, nil
 }
 
-func mainPackages(prog *ssa.Program, wantPkg map[*types.Package]*loader.PackageInfo) ([]*ssa.Package, error) {
-	mains := make([]*ssa.Package, 0, len(wantPkg))
-	for tpkg := range wantPkg {
+// mainPackages returns the subset of main packages within pkgSet.
+func mainPackages(prog *ssa.Program, pkgSet map[*types.Package]*loader.PackageInfo) ([]*ssa.Package, error) {
+	mains := make([]*ssa.Package, 0, len(pkgSet))
+	for tpkg := range pkgSet {
 		pkg := prog.Package(tpkg)
 		if tpkg.Name() == "main" && pkg.Func("main") != nil {
 			mains = append(mains, pkg)
@@ -392,8 +402,12 @@ func mainPackages(prog *ssa.Program, wantPkg map[*types.Package]*loader.PackageI
 	return mains, nil
 }
 
-func calledInReturn(calls []*callgraph.Edge) bool {
-	for _, edge := range calls {
+// calledInReturn reports whether any of a function's inbound calls happened
+// directly as a return statement. That is, if function "foo" was used via
+// "return foo()". This means that the result parameters of the function cannot
+// be changed without breaking other code.
+func calledInReturn(in []*callgraph.Edge) bool {
+	for _, edge := range in {
 		val := edge.Site.Value()
 		if val == nil { // e.g. go statement
 			continue
@@ -425,6 +439,8 @@ func calledInReturn(calls []*callgraph.Edge) bool {
 	return false
 }
 
+// nodeStr stringifies a syntax tree node. It is only meant for simple nodes,
+// such as short value expressions.
 func nodeStr(node ast.Node) string {
 	var buf bytes.Buffer
 	fset := token.NewFileSet()
@@ -434,7 +450,14 @@ func nodeStr(node ast.Node) string {
 	return buf.String()
 }
 
-func (c *Checker) receivesSameValues(in []*callgraph.Edge, par *ssa.Parameter, pos int) string {
+// alwaysReceivedConst checks if a function parameter always receives the same
+// constant value, given a list of inbound calls. If it does, a description of
+// the value is returned. If not, an empty string is returned.
+//
+// This function is used to recommend that the parameter be replaced by a direct
+// use of the constant. To avoid false positives, the function will return false
+// if the number of inbound calls is too low.
+func (c *Checker) alwaysReceivedConst(in []*callgraph.Edge, par *ssa.Parameter, pos int) string {
 	if ast.IsExported(par.Parent().Name()) {
 		// we might not have all call sites for an exported func
 		return ""
@@ -483,6 +506,9 @@ func (c *Checker) receivesSameValues(in []*callgraph.Edge, par *ssa.Parameter, p
 	return seen.String()
 }
 
+// anyRealUse reports whether a parameter has any relevant use within its
+// function body. Certain uses are ignored, such as recursive calls where the
+// parameter is re-used as itself.
 func anyRealUse(par *ssa.Parameter, pos int) bool {
 refLoop:
 	for _, ref := range *par.Referrers() {
@@ -513,6 +539,9 @@ refLoop:
 	return false
 }
 
+// insertedStore reports whether a SSA instruction was inserted by the SSA
+// building algorithm. That is, the store was not directly translated from an
+// original Go statement.
 func insertedStore(instr ssa.Instruction) bool {
 	if instr.Pos() != token.NoPos {
 		return false
@@ -527,6 +556,8 @@ func insertedStore(instr ssa.Instruction) bool {
 	return ok && len(*alloc.Referrers()) == 1
 }
 
+// rxHarmlessCall matches all the function expression strings which are allowed
+// in a dummy implementation.
 var rxHarmlessCall = regexp.MustCompile(`(?i)\b(log(ger)?|errors)\b|\bf?print`)
 
 // dummyImpl reports whether a block is a dummy implementation. This is
@@ -575,6 +606,11 @@ func dummyImpl(blk *ssa.BasicBlock) bool {
 	return false
 }
 
+// declCounts reports how many times a package's functions are declared. This is
+// used, for example, to find if a function has many implementations.
+//
+// Since this function parses all of the package's Go source files on disk, its
+// results are cached.
 func (c *Checker) declCounts(pkgDir string, pkgName string) map[string]int {
 	if m := c.cachedDeclCounts[pkgDir]; m != nil {
 		return m
@@ -594,7 +630,7 @@ func (c *Checker) declCounts(pkgDir string, pkgName string) map[string]int {
 			if !ok {
 				continue
 			}
-			name := astPrefix(fd.Recv) + fd.Name.Name
+			name := recvPrefix(fd.Recv) + fd.Name.Name
 			count[name]++
 		}
 	}
@@ -602,7 +638,12 @@ func (c *Checker) declCounts(pkgDir string, pkgName string) map[string]int {
 	return count
 }
 
-func astPrefix(recv *ast.FieldList) string {
+// recvPrefix returns the string prefix for a receiver field list. Star
+// expressions are ignored, so as to conservatively assume that pointer and
+// non-pointer receivers may still implement the same function.
+//
+// For example, for "function (*Foo) Bar()", recvPrefix will return "Foo.".
+func recvPrefix(recv *ast.FieldList) string {
 	if recv == nil {
 		return ""
 	}
@@ -618,6 +659,10 @@ func astPrefix(recv *ast.FieldList) string {
 	return id.Name + "."
 }
 
+// multipleImpls reports whether a function has multiple implementations in the
+// source code. For example, if there are different function bodies depending on
+// the operating system or architecture. That tends to mean that an unused
+// parameter in one implementation may not be unused in another.
 func (c *Checker) multipleImpls(info *loader.PackageInfo, fn *ssa.Function) bool {
 	if fn.Parent() != nil { // nested func
 		return false
@@ -640,6 +685,9 @@ func (c *Checker) multipleImpls(info *loader.PackageInfo, fn *ssa.Function) bool
 	return count[name] > 1
 }
 
+// receivesExtractedArgs reports whether a function call got all of its
+// arguments via another function call. That is, if a call to function "foo" was
+// of the form "foo(bar())".
 func receivesExtractedArgs(sign *types.Signature, call *ssa.Call) bool {
 	if call == nil {
 		return false
@@ -662,6 +710,9 @@ func receivesExtractedArgs(sign *types.Signature, call *ssa.Call) bool {
 	return true
 }
 
+// paramDesc returns a string describing a parameter variable. If the parameter
+// had no name, the function will fall back to describing the parameter by its
+// position within the parameter list and its type.
 func paramDesc(i int, v *types.Var) string {
 	name := v.Name()
 	if name != "" && name != "_" {
@@ -670,11 +721,15 @@ func paramDesc(i int, v *types.Var) string {
 	return fmt.Sprintf("%d (%s)", i, v.Type().String())
 }
 
+// requiredViaCall reports whether a function has any inbound call that strongly
+// depends on the function's signature. For example, if the function is accessed
+// via a field, or if it gets its arguments from another function call. In these
+// cases, changing the function signature would mean a larger refactor.
 func requiredViaCall(fn *ssa.Function, calls []*callgraph.Edge) bool {
 	for _, edge := range calls {
 		call := edge.Site.Value()
 		if receivesExtractedArgs(fn.Signature, call) {
-			// called via function(results())
+			// called via fn(x())
 			return true
 		}
 		if _, ok := edge.Site.Common().Value.(*ssa.Function); !ok {

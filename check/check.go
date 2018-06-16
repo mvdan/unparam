@@ -32,8 +32,8 @@ import (
 	"mvdan.cc/lint"
 )
 
-// UnusedParams returns a list of issues that point out unused function
-// parameters.
+// UnusedParams returns a list of human-readable issues that point out unused
+// function parameters.
 func UnusedParams(tests bool, algo string, exported, debug bool, args ...string) ([]string, error) {
 	wd, err := os.Getwd()
 	if err != nil {
@@ -51,6 +51,9 @@ func UnusedParams(tests bool, algo string, exported, debug bool, args ...string)
 	return c.lines(args...)
 }
 
+// Checker finds unused parameterss in a program. You probably want to use
+// UnusedParams instead, unless you want to use a *loader.Program and
+// *ssa.Program directly.
 type Checker struct {
 	lprog *loader.Program
 	prog  *ssa.Program
@@ -110,6 +113,7 @@ func (c *Checker) lines(args ...string) ([]string, error) {
 	return lines, nil
 }
 
+// Issue identifies a found unused parameter.
 type Issue struct {
 	pos   token.Pos
 	fname string
@@ -119,10 +123,12 @@ type Issue struct {
 func (i Issue) Pos() token.Pos  { return i.pos }
 func (i Issue) Message() string { return i.fname + " - " + i.msg }
 
+// Program supplies Checker with the needed *loader.Program.
 func (c *Checker) Program(lprog *loader.Program) {
 	c.lprog = lprog
 }
 
+// ProgramSSA supplies Checker with the needed *ssa.Program.
 func (c *Checker) ProgramSSA(prog *ssa.Program) {
 	c.prog = prog
 }
@@ -230,6 +236,7 @@ func (c *Checker) Check() ([]lint.Issue, error) {
 	return c.issues, nil
 }
 
+// addIssue records a newly found unused parameter.
 func (c *Checker) addIssue(fn *ssa.Function, pos token.Pos, format string, args ...interface{}) {
 	c.issues = append(c.issues, Issue{
 		pos:   pos,
@@ -238,6 +245,7 @@ func (c *Checker) addIssue(fn *ssa.Function, pos token.Pos, format string, args 
 	})
 }
 
+// checkFunc checks a single function for unused parameters.
 func (c *Checker) checkFunc(fn *ssa.Function, pkgInfo *loader.PackageInfo) {
 	c.debug("func %s\n", fn.RelString(fn.Package().Pkg))
 	if dummyImpl(fn.Blocks[0]) { // panic implementation

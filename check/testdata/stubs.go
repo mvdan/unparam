@@ -63,3 +63,13 @@ func zeroMapImpl(f FooStruct) map[int]int {
 func zeroMapMakeImpl(f FooStruct) map[int]int {
 	return make(map[int]int, 0)
 }
+
+func customError(msg string) error { return errors.New("custom: " + msg) }
+func customErrorImpl(f FooType) (int8, error) {
+	return -1, customError("x: bar")
+}
+
+func customErrorf(msg string) error { return errors.New("custom: " + msg) }
+func customErrorfImpl(f FooType) (int8, error) {
+	return -1, customErrorf("x: bar")
+}

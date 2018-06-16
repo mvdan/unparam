@@ -556,7 +556,7 @@ func insertedStore(instr ssa.Instruction) bool {
 
 // rxHarmlessCall matches all the function expression strings which are allowed
 // in a dummy implementation.
-var rxHarmlessCall = regexp.MustCompile(`(?i)\b(log(ger)?|errors)\b|\bf?print`)
+var rxHarmlessCall = regexp.MustCompile(`(?i)\b(log(ger)?|errors)\b|\bf?print|errorf?$`)
 
 // dummyImpl reports whether a block is a dummy implementation. This is
 // true if the block will almost immediately panic, throw or return

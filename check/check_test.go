@@ -7,6 +7,7 @@ import (
 	"flag"
 	"io/ioutil"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -17,7 +18,7 @@ var (
 )
 
 func TestCHA(t *testing.T) {
-	warns, err := UnusedParams(true, "cha", false, *debug,
+	got, err := UnusedParams(true, "cha", false, *debug,
 		"./testdata",
 		"./testdata/main",
 	)
@@ -25,9 +26,9 @@ func TestCHA(t *testing.T) {
 		t.Fatal(err)
 	}
 	logPath := filepath.Join("testdata", "log")
-	got := strings.Join(warns, "\n") + "\n"
 	if *write {
-		err := ioutil.WriteFile(logPath, []byte(got), 0644)
+		body := strings.Join(got, "\n") + "\n"
+		err := ioutil.WriteFile(logPath, []byte(body), 0644)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -37,10 +38,40 @@ func TestCHA(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := string(wantBs)
-	if got != want {
-		t.Fatalf("Unexpected output. Want:\n%sGot:\n%s", want, got)
+	want := strings.Split(string(wantBs), "\n")
+	if want[len(want)-1] == "" { // for the trailing newline
+		want = want[:len(want)-1]
 	}
+	if diff := lineDiff(want, got); diff != "" {
+		t.Fatalf("Unexpected output:\n%s", diff)
+	}
+}
+
+// lineDiff returns a diff between two lists of lines. Position information is
+// not recorded, and the differences are always reported in lexicographic order.
+func lineDiff(want, got []string) string {
+	diff := make(map[string]int)
+	for _, line := range want {
+		diff[line]--
+	}
+	for _, line := range got {
+		diff[line]++
+	}
+	var lines []string
+	for line, val := range diff {
+		op := "+"
+		if val < 0 {
+			op = "-"
+			val = -val
+		}
+		for i := 0; i < val; i++ {
+			lines = append(lines, op+line)
+		}
+	}
+	sort.Slice(lines, func(i, j int) bool {
+		return lines[i][1:] < lines[j][1:]
+	})
+	return strings.Join(lines, "\n")
 }
 
 func TestRTA(t *testing.T) {

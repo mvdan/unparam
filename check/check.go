@@ -54,6 +54,7 @@ func UnusedParams(tests bool, algo string, exported, debug bool, args ...string)
 type Checker struct {
 	lprog *loader.Program
 	prog  *ssa.Program
+	graph *callgraph.Graph
 
 	wd string
 
@@ -61,6 +62,8 @@ type Checker struct {
 	algo     string
 	exported bool
 	debugLog io.Writer
+
+	issues []lint.Issue
 
 	cachedDeclCounts map[string]map[string]int
 
@@ -168,10 +171,9 @@ func (c *Checker) Check() ([]lint.Issue, error) {
 			})
 		}
 	}
-	var cg *callgraph.Graph
 	switch c.algo {
 	case "cha":
-		cg = cha.CallGraph(c.prog)
+		c.graph = cha.CallGraph(c.prog)
 	case "rta":
 		mains, err := mainPackages(c.prog, wantPkg)
 		if err != nil {
@@ -182,13 +184,12 @@ func (c *Checker) Check() ([]lint.Issue, error) {
 			roots = append(roots, main.Func("init"), main.Func("main"))
 		}
 		result := rta.Analyze(roots, true)
-		cg = result.CallGraph
+		c.graph = result.CallGraph
 	default:
 		return nil, fmt.Errorf("unknown call graph construction algorithm: %q", c.algo)
 	}
-	cg.DeleteSyntheticNodes()
+	c.graph.DeleteSyntheticNodes()
 
-	var issues []lint.Issue
 	for fn := range ssautil.AllFunctions(c.prog) {
 		switch {
 		case fn.Pkg == nil: // builtin?
@@ -198,15 +199,15 @@ func (c *Checker) Check() ([]lint.Issue, error) {
 		case len(fn.Blocks) == 0: // stub
 			continue
 		}
-		info := wantPkg[fn.Pkg.Pkg]
-		if info == nil { // not part of given pkgs
+		pkgInfo := wantPkg[fn.Pkg.Pkg]
+		if pkgInfo == nil { // not part of given pkgs
 			continue
 		}
 		if c.exported || fn.Pkg.Pkg.Name() == "main" {
 			// we want exported funcs, or this is a main
 			// package so nothing is exported
 		} else if strings.Contains(fn.Name(), "$") {
-			// anonymous function
+			// anonymous function within a possibly exported func
 		} else if ast.IsExported(fn.Name()) {
 			continue // user doesn't want to change signatures here
 		}
@@ -214,177 +215,177 @@ func (c *Checker) Check() ([]lint.Issue, error) {
 		if genFiles[fname] {
 			continue // generated file
 		}
-		c.debug("func %s\n", fn.RelString(fn.Package().Pkg))
-		if dummyImpl(fn.Blocks[0]) { // panic implementation
-			c.debug("  skip - dummy implementation\n")
-			continue
-		}
-		var inboundCalls []*callgraph.Edge
-		if node := cg.Nodes[fn]; node != nil {
-			inboundCalls = node.In
-		}
-		if requiredViaCall(fn, inboundCalls) {
-			c.debug("  skip - type is required via call\n")
-			continue
-		}
-		if c.multipleImpls(info, fn) {
-			c.debug("  skip - multiple implementations via build tags\n")
-			continue
-		}
 
-		results := fn.Signature.Results()
-		seenConsts := make([]*constant.Value, results.Len())
-		seenParams := make([]*ssa.Parameter, results.Len())
-		numRets := 0
-		allRetsExtracting := true
-		for _, block := range fn.Blocks {
-			last := block.Instrs[len(block.Instrs)-1]
-			ret, ok := last.(*ssa.Return)
-			if !ok {
-				continue
-			}
-			for i, val := range ret.Results {
-				switch x := val.(type) {
-				case *ssa.Const:
-					allRetsExtracting = false
-					seenParams[i] = nil
-					switch {
-					case numRets == 0:
-						seenConsts[i] = &x.Value
-					case seenConsts[i] == nil:
-					case !eqlConsts(*seenConsts[i], x.Value):
-						seenConsts[i] = nil
-					}
-				case *ssa.Parameter:
-					allRetsExtracting = false
-					seenConsts[i] = nil
-					switch {
-					case numRets == 0:
-						seenParams[i] = x
-					case seenParams[i] == nil:
-					case seenParams[i] != x:
-						seenParams[i] = nil
-					}
-				case *ssa.Extract:
-					seenConsts[i] = nil
-					seenParams[i] = nil
-				default:
-					allRetsExtracting = false
-					seenConsts[i] = nil
-					seenParams[i] = nil
-				}
-			}
-			numRets++
-		}
-		for i, val := range seenConsts {
-			if val == nil {
-				// no consistent returned constant
-				continue
-			}
-			if *val != nil && numRets == 1 {
-				// just one non-nil return (too many
-				// false positives)
-				continue
-			}
-			valStr := "nil" // always returned untyped nil
-			if *val != nil {
-				valStr = (*val).String()
-			}
-			if calledInReturn(inboundCalls) {
-				continue
-			}
-			res := results.At(i)
-			name := paramDesc(i, res)
-			issues = append(issues, Issue{
-				pos:   res.Pos(),
-				fname: fn.RelString(fn.Package().Pkg),
-				msg:   fmt.Sprintf("result %s is always %s", name, valStr),
-			})
-		}
-
-	resLoop:
-		for i := 0; i < results.Len(); i++ {
-			if allRetsExtracting {
-				continue
-			}
-			res := results.At(i)
-			if res.Type() == errorType {
-				// "error is never unused" is less
-				// useful, and it's up to tools like
-				// errcheck anyway.
-				continue
-			}
-			count := 0
-			for _, edge := range inboundCalls {
-				val := edge.Site.Value()
-				if val == nil { // e.g. go statement
-					count++
-					continue
-				}
-				for _, instr := range *val.Referrers() {
-					extract, ok := instr.(*ssa.Extract)
-					if !ok {
-						continue resLoop // direct, real use
-					}
-					if extract.Index != i {
-						continue // not the same result param
-					}
-					if len(*extract.Referrers()) > 0 {
-						continue resLoop // real use after extraction
-					}
-				}
-				count++
-			}
-			if count < 2 {
-				continue // require ignoring at least twice
-			}
-			name := paramDesc(i, res)
-			issues = append(issues, Issue{
-				pos:   res.Pos(),
-				fname: fn.RelString(fn.Package().Pkg),
-				msg:   fmt.Sprintf("result %s is never used", name),
-			})
-		}
-
-		for i, par := range fn.Params {
-			if i == 0 && fn.Signature.Recv() != nil { // receiver
-				continue
-			}
-			c.debug("%s\n", par.String())
-			switch par.Object().Name() {
-			case "", "_": // unnamed
-				c.debug("  skip - unnamed\n")
-				continue
-			}
-			if stdSizes.Sizeof(par.Type()) == 0 {
-				c.debug("  skip - zero size\n")
-				continue
-			}
-			reason := "is unused"
-			constStr := c.alwaysReceivedConst(inboundCalls, par, i)
-			if constStr != "" {
-				reason = fmt.Sprintf("always receives %s", constStr)
-			} else if anyRealUse(par, i) {
-				c.debug("  skip - used somewhere in the func body\n")
-				continue
-			}
-			issues = append(issues, Issue{
-				pos:   par.Pos(),
-				fname: fn.RelString(fn.Package().Pkg),
-				msg:   fmt.Sprintf("%s %s", par.Name(), reason),
-			})
-		}
-
+		c.checkFunc(fn, pkgInfo)
 	}
-	sort.Slice(issues, func(i, j int) bool {
-		p1 := c.prog.Fset.Position(issues[i].Pos())
-		p2 := c.prog.Fset.Position(issues[j].Pos())
+	sort.Slice(c.issues, func(i, j int) bool {
+		p1 := c.prog.Fset.Position(c.issues[i].Pos())
+		p2 := c.prog.Fset.Position(c.issues[j].Pos())
 		if p1.Filename == p2.Filename {
 			return p1.Offset < p2.Offset
 		}
 		return p1.Filename < p2.Filename
 	})
-	return issues, nil
+	return c.issues, nil
+}
+
+func (c *Checker) addIssue(fn *ssa.Function, pos token.Pos, format string, args ...interface{}) {
+	c.issues = append(c.issues, Issue{
+		pos:   pos,
+		fname: fn.RelString(fn.Package().Pkg),
+		msg:   fmt.Sprintf(format, args...),
+	})
+}
+
+func (c *Checker) checkFunc(fn *ssa.Function, pkgInfo *loader.PackageInfo) {
+	c.debug("func %s\n", fn.RelString(fn.Package().Pkg))
+	if dummyImpl(fn.Blocks[0]) { // panic implementation
+		c.debug("  skip - dummy implementation\n")
+		return
+	}
+	var inboundCalls []*callgraph.Edge
+	if node := c.graph.Nodes[fn]; node != nil {
+		inboundCalls = node.In
+	}
+	if requiredViaCall(fn, inboundCalls) {
+		c.debug("  skip - type is required via call\n")
+		return
+	}
+	if c.multipleImpls(pkgInfo, fn) {
+		c.debug("  skip - multiple implementations via build tags\n")
+		return
+	}
+
+	results := fn.Signature.Results()
+	seenConsts := make([]*constant.Value, results.Len())
+	seenParams := make([]*ssa.Parameter, results.Len())
+	numRets := 0
+	allRetsExtracting := true
+	for _, block := range fn.Blocks {
+		last := block.Instrs[len(block.Instrs)-1]
+		ret, ok := last.(*ssa.Return)
+		if !ok {
+			continue
+		}
+		for i, val := range ret.Results {
+			switch x := val.(type) {
+			case *ssa.Const:
+				allRetsExtracting = false
+				seenParams[i] = nil
+				switch {
+				case numRets == 0:
+					seenConsts[i] = &x.Value
+				case seenConsts[i] == nil:
+				case !eqlConsts(*seenConsts[i], x.Value):
+					seenConsts[i] = nil
+				}
+			case *ssa.Parameter:
+				allRetsExtracting = false
+				seenConsts[i] = nil
+				switch {
+				case numRets == 0:
+					seenParams[i] = x
+				case seenParams[i] == nil:
+				case seenParams[i] != x:
+					seenParams[i] = nil
+				}
+			case *ssa.Extract:
+				seenConsts[i] = nil
+				seenParams[i] = nil
+			default:
+				allRetsExtracting = false
+				seenConsts[i] = nil
+				seenParams[i] = nil
+			}
+		}
+		numRets++
+	}
+	for i, val := range seenConsts {
+		if val == nil {
+			// no consistent returned constant
+			continue
+		}
+		if *val != nil && numRets == 1 {
+			// just one non-nil return (too many
+			// false positives)
+			continue
+		}
+		valStr := "nil" // always returned untyped nil
+		if *val != nil {
+			valStr = (*val).String()
+		}
+		if calledInReturn(inboundCalls) {
+			continue
+		}
+		res := results.At(i)
+		name := paramDesc(i, res)
+		c.addIssue(fn, res.Pos(), "result %s is always %s", name, valStr)
+	}
+
+resLoop:
+	for i := 0; i < results.Len(); i++ {
+		if allRetsExtracting {
+			continue
+		}
+		res := results.At(i)
+		if res.Type() == errorType {
+			// "error is never unused" is less
+			// useful, and it's up to tools like
+			// errcheck anyway.
+			continue
+		}
+		count := 0
+		for _, edge := range inboundCalls {
+			val := edge.Site.Value()
+			if val == nil { // e.g. go statement
+				count++
+				continue
+			}
+			for _, instr := range *val.Referrers() {
+				extract, ok := instr.(*ssa.Extract)
+				if !ok {
+					continue resLoop // direct, real use
+				}
+				if extract.Index != i {
+					continue // not the same result param
+				}
+				if len(*extract.Referrers()) > 0 {
+					continue resLoop // real use after extraction
+				}
+			}
+			count++
+		}
+		if count < 2 {
+			continue // require ignoring at least twice
+		}
+		name := paramDesc(i, res)
+		c.addIssue(fn, res.Pos(), "result %s is never used", name)
+	}
+
+	for i, par := range fn.Params {
+		if i == 0 && fn.Signature.Recv() != nil { // receiver
+			continue
+		}
+		c.debug("%s\n", par.String())
+		switch par.Object().Name() {
+		case "", "_": // unnamed
+			c.debug("  skip - unnamed\n")
+			continue
+		}
+		if stdSizes.Sizeof(par.Type()) == 0 {
+			c.debug("  skip - zero size\n")
+			continue
+		}
+		reason := "is unused"
+		constStr := c.alwaysReceivedConst(inboundCalls, par, i)
+		if constStr != "" {
+			reason = fmt.Sprintf("always receives %s", constStr)
+		} else if anyRealUse(par, i) {
+			c.debug("  skip - used somewhere in the func body\n")
+			continue
+		}
+		c.addIssue(fn, par.Pos(), "%s %s", par.Name(), reason)
+	}
 }
 
 // mainPackages returns the subset of main packages within pkgSet.
@@ -458,6 +459,11 @@ func nodeStr(node ast.Node) string {
 // use of the constant. To avoid false positives, the function will return false
 // if the number of inbound calls is too low.
 func (c *Checker) alwaysReceivedConst(in []*callgraph.Edge, par *ssa.Parameter, pos int) string {
+	if len(in) < 4 {
+		// We can't possibly receive the same constant value enough
+		// times, hence a potential false positive.
+		return ""
+	}
 	if ast.IsExported(par.Parent().Name()) {
 		// we might not have all call sites for an exported func
 		return ""
@@ -470,7 +476,6 @@ func (c *Checker) alwaysReceivedConst(in []*callgraph.Edge, par *ssa.Parameter, 
 		origPos--
 	}
 	seenOrig := ""
-	count := 0
 	for _, edge := range in {
 		call := edge.Site.Common()
 		cnst, ok := call.Args[pos].(*ssa.Const)
@@ -487,18 +492,11 @@ func (c *Checker) alwaysReceivedConst(in []*callgraph.Edge, par *ssa.Parameter, 
 		if seen == nil {
 			seen = cnst.Value // first constant
 			seenOrig = origArg
-			count = 1
 		} else if !eqlConsts(seen, cnst.Value) {
 			return "" // different constants
-		} else {
-			count++
-			if origArg != seenOrig {
-				seenOrig = ""
-			}
+		} else if origArg != seenOrig {
+			seenOrig = ""
 		}
-	}
-	if count < 4 {
-		return "" // not enough times, likely false positive
 	}
 	if seenOrig != "" && seenOrig != seen.String() {
 		return fmt.Sprintf("%s (%v)", seenOrig, seen)

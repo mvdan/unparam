@@ -205,8 +205,8 @@ func (c *Checker) Check() ([]lint.Issue, error) {
 			continue
 		}
 		if c.exported || fn.Pkg.Pkg.Name() == "main" {
-			// we want exported funcs, or this is a main
-			// package so nothing is exported
+			// we want exported funcs, or this is a main package so
+			// nothing is exported
 		} else if strings.Contains(fn.Name(), "$") {
 			// anonymous function within a possibly exported func
 		} else if ast.IsExported(fn.Name()) {
@@ -268,20 +268,16 @@ func (c *Checker) checkFunc(fn *ssa.Function, pkgInfo *loader.PackageInfo) {
 			continue
 		}
 		for i, val := range ret.Results {
-			switch x := val.(type) {
-			case *ssa.Const:
+			if _, ok := val.(*ssa.Extract); !ok {
 				allRetsExtracting = false
-				switch {
-				case numRets == 0:
-					sameConsts[i] = x.Value
-				case sameConsts[i] == unknownConst:
-				case !eqlConsts(sameConsts[i], x.Value):
-					sameConsts[i] = unknownConst
-				}
-			case *ssa.Extract:
-				sameConsts[i] = unknownConst
-			default:
-				allRetsExtracting = false
+			}
+			value := unknownConst
+			if x, ok := val.(*ssa.Const); ok {
+				value = x.Value
+			}
+			if numRets == 0 {
+				sameConsts[i] = value
+			} else if !eqlConsts(sameConsts[i], value) {
 				sameConsts[i] = unknownConst
 			}
 		}
@@ -293,8 +289,7 @@ func (c *Checker) checkFunc(fn *ssa.Function, pkgInfo *loader.PackageInfo) {
 			continue
 		}
 		if val != nil && numRets == 1 {
-			// just one non-nil return (too many
-			// false positives)
+			// just one non-nil return (too many false positives)
 			continue
 		}
 		valStr := "nil" // an untyped nil is a nil constant.Value
@@ -316,9 +311,8 @@ resLoop:
 		}
 		res := results.At(i)
 		if res.Type() == errorType {
-			// "error is never unused" is less
-			// useful, and it's up to tools like
-			// errcheck anyway.
+			// "error is never unused" is less useful, and it's up
+			// to tools like errcheck anyway.
 			continue
 		}
 		count := 0
@@ -458,8 +452,8 @@ func (c *Checker) alwaysReceivedConst(in []*callgraph.Edge, par *ssa.Parameter, 
 	seen := unknownConst
 	origPos := pos
 	if par.Parent().Signature.Recv() != nil {
-		// go/ast's CallExpr.Args does not include the receiver,
-		// but go/ssa's equivalent does.
+		// go/ast's CallExpr.Args does not include the receiver, but
+		// go/ssa's equivalent does.
 		origPos--
 	}
 	seenOrig := ""
@@ -575,8 +569,7 @@ func dummyImpl(blk *ssa.BasicBlock) bool {
 			*ssa.IndexAddr, *ssa.FieldAddr, *ssa.Slice,
 			*ssa.Lookup, *ssa.ChangeType, *ssa.TypeAssert,
 			*ssa.Convert, *ssa.ChangeInterface:
-			// non-trivial expressions in panic/log/print
-			// calls
+			// non-trivial expressions in panic/log/print calls
 		case *ssa.Return, *ssa.Panic:
 			return true
 		case *ssa.Call:
@@ -723,8 +716,8 @@ func requiredViaCall(fn *ssa.Function, calls []*callgraph.Edge) bool {
 			return true
 		}
 		if _, ok := edge.Site.Common().Value.(*ssa.Function); !ok {
-			// called via a parameter or field, type
-			// is set in stone.
+			// called via a parameter or field, type is set in
+			// stone.
 			return true
 		}
 	}

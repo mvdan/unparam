@@ -74,7 +74,8 @@ var (
 	_ lint.Checker = (*Checker)(nil)
 	_ lint.WithSSA = (*Checker)(nil)
 
-	errorType = types.Universe.Lookup("error").Type()
+	errorType    = types.Universe.Lookup("error").Type()
+	unknownConst = constant.MakeUnknown()
 )
 
 // lines runs the checker and returns the list of readable issues.
@@ -257,7 +258,7 @@ func (c *Checker) checkFunc(fn *ssa.Function, pkgInfo *loader.PackageInfo) {
 	}
 
 	results := fn.Signature.Results()
-	seenConsts := make([]*constant.Value, results.Len())
+	sameConsts := make([]constant.Value, results.Len())
 	numRets := 0
 	allRetsExtracting := true
 	for _, block := range fn.Blocks {
@@ -272,33 +273,33 @@ func (c *Checker) checkFunc(fn *ssa.Function, pkgInfo *loader.PackageInfo) {
 				allRetsExtracting = false
 				switch {
 				case numRets == 0:
-					seenConsts[i] = &x.Value
-				case seenConsts[i] == nil:
-				case !eqlConsts(*seenConsts[i], x.Value):
-					seenConsts[i] = nil
+					sameConsts[i] = x.Value
+				case sameConsts[i] == unknownConst:
+				case !eqlConsts(sameConsts[i], x.Value):
+					sameConsts[i] = unknownConst
 				}
 			case *ssa.Extract:
-				seenConsts[i] = nil
+				sameConsts[i] = unknownConst
 			default:
 				allRetsExtracting = false
-				seenConsts[i] = nil
+				sameConsts[i] = unknownConst
 			}
 		}
 		numRets++
 	}
-	for i, val := range seenConsts {
-		if val == nil {
+	for i, val := range sameConsts {
+		if val == unknownConst {
 			// no consistent returned constant
 			continue
 		}
-		if *val != nil && numRets == 1 {
+		if val != nil && numRets == 1 {
 			// just one non-nil return (too many
 			// false positives)
 			continue
 		}
-		valStr := "nil" // always returned untyped nil
-		if *val != nil {
-			valStr = (*val).String()
+		valStr := "nil" // an untyped nil is a nil constant.Value
+		if val != nil {
+			valStr = val.String()
 		}
 		if calledInReturn(inboundCalls) {
 			continue
@@ -454,7 +455,7 @@ func (c *Checker) alwaysReceivedConst(in []*callgraph.Edge, par *ssa.Parameter, 
 		// we might not have all call sites for an exported func
 		return ""
 	}
-	var seen constant.Value
+	seen := unknownConst
 	origPos := pos
 	if par.Parent().Signature.Recv() != nil {
 		// go/ast's CallExpr.Args does not include the receiver,
@@ -475,7 +476,7 @@ func (c *Checker) alwaysReceivedConst(in []*callgraph.Edge, par *ssa.Parameter, 
 		} else {
 			origArg = nodeStr(origCall.Args[origPos])
 		}
-		if seen == nil {
+		if seen == unknownConst {
 			seen = cnst.Value // first constant
 			seenOrig = origArg
 		} else if !eqlConsts(seen, cnst.Value) {

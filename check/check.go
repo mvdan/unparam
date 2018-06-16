@@ -610,15 +610,20 @@ func dummyImpl(blk *ssa.BasicBlock) bool {
 // Since this function parses all of the package's Go source files on disk, its
 // results are cached.
 func (c *Checker) declCounts(pkgDir string, pkgName string) map[string]int {
-	if m := c.cachedDeclCounts[pkgDir]; m != nil {
+	key := pkgDir + ":" + pkgName
+	if m, ok := c.cachedDeclCounts[key]; ok {
 		return m
 	}
 	fset := token.NewFileSet()
 	pkgs, err := parser.ParseDir(fset, pkgDir, nil, 0)
 	if err != nil {
+		// Don't panic or error here. In some part of the go/* libraries
+		// stack, we sometimes end up with a package directory that is
+		// wrong. That's not our fault, and we can't simply break the
+		// tool until we fix the underlying issue.
 		println(err.Error())
-		c.cachedDeclCounts[pkgDir] = map[string]int{}
-		return map[string]int{}
+		c.cachedDeclCounts[pkgDir] = nil
+		return nil
 	}
 	pkg := pkgs[pkgName]
 	count := make(map[string]int)
@@ -632,7 +637,7 @@ func (c *Checker) declCounts(pkgDir string, pkgName string) map[string]int {
 			count[name]++
 		}
 	}
-	c.cachedDeclCounts[pkgDir] = count
+	c.cachedDeclCounts[key] = count
 	return count
 }
 

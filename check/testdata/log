@@ -34,6 +34,7 @@ testdata/stubs.go:45:30: nonConstImpl - s is unused
 testdata/stubs.go:49:32: oneOverwritten - i is unused
 testdata/tags_main.go:5:23: oneUnusedMain - b is unused
 testdata/tags_main.go:24:22: multImplsMethod - f is unused
+testdata/testpkg_test.go:5:20: oneUnused3 - b is unused
 testdata/usedas.go:49:22: UsedAsArg$4 - u is unused
 testdata/usedas.go:67:36: usedAsIfaceNothing - i is unused
 testdata/values.go:5:23: receivesSameMany - f always receives 3

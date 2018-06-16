@@ -258,7 +258,6 @@ func (c *Checker) checkFunc(fn *ssa.Function, pkgInfo *loader.PackageInfo) {
 
 	results := fn.Signature.Results()
 	seenConsts := make([]*constant.Value, results.Len())
-	seenParams := make([]*ssa.Parameter, results.Len())
 	numRets := 0
 	allRetsExtracting := true
 	for _, block := range fn.Blocks {
@@ -271,7 +270,6 @@ func (c *Checker) checkFunc(fn *ssa.Function, pkgInfo *loader.PackageInfo) {
 			switch x := val.(type) {
 			case *ssa.Const:
 				allRetsExtracting = false
-				seenParams[i] = nil
 				switch {
 				case numRets == 0:
 					seenConsts[i] = &x.Value
@@ -279,23 +277,11 @@ func (c *Checker) checkFunc(fn *ssa.Function, pkgInfo *loader.PackageInfo) {
 				case !eqlConsts(*seenConsts[i], x.Value):
 					seenConsts[i] = nil
 				}
-			case *ssa.Parameter:
-				allRetsExtracting = false
-				seenConsts[i] = nil
-				switch {
-				case numRets == 0:
-					seenParams[i] = x
-				case seenParams[i] == nil:
-				case seenParams[i] != x:
-					seenParams[i] = nil
-				}
 			case *ssa.Extract:
 				seenConsts[i] = nil
-				seenParams[i] = nil
 			default:
 				allRetsExtracting = false
 				seenConsts[i] = nil
-				seenParams[i] = nil
 			}
 		}
 		numRets++

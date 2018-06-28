@@ -133,6 +133,16 @@ func (c *Checker) ProgramSSA(prog *ssa.Program) {
 	c.prog = prog
 }
 
+// CallgraphAlgorithm supplies Checker with the call graph construction algorithm.
+func (c *Checker) CallgraphAlgorithm(algo string) {
+	c.algo = algo
+}
+
+// CheckExportedFuncs sets whether to inspect exported functions
+func (c *Checker) CheckExportedFuncs(exported bool) {
+	c.exported = exported
+}
+
 func (c *Checker) debug(format string, a ...interface{}) {
 	if c.debugLog != nil {
 		fmt.Fprintf(c.debugLog, format, a...)

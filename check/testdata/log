@@ -13,6 +13,7 @@ testdata/ignoredrets.go:81:29: ignoredGoDefer - result 1 (string) is never used
 testdata/main/main.go:3:19: OneUnused - b is unused
 testdata/methods.go:5:28: (FooType).oneUnused - a is unused
 testdata/names.go:3:18: regularName - f is unused
+testdata/nil_constant_crash.go:5:8: f - p always receives nil
 testdata/reused.go:3:24: reusedRecursively - f is unused
 testdata/reused.go:24:32: unusedVariadic - bs is unused
 testdata/reused.go:29:43: reusedRecursivelyVariadic - bs is unused

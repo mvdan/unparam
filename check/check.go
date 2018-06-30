@@ -255,6 +255,16 @@ func (c *Checker) addIssue(fn *ssa.Function, pos token.Pos, format string, args 
 	})
 }
 
+// constantValueToString returns string representation for constant value
+func constantValueToString(val constant.Value) string {
+	valStr := "nil" // an untyped nil is a nil constant.Value
+	if val != nil {
+		valStr = val.String()
+	}
+
+	return valStr
+}
+
 // checkFunc checks a single function for unused parameters.
 func (c *Checker) checkFunc(fn *ssa.Function, pkgInfo *loader.PackageInfo) {
 	c.debug("func %s\n", fn.RelString(fn.Package().Pkg))
@@ -310,10 +320,7 @@ func (c *Checker) checkFunc(fn *ssa.Function, pkgInfo *loader.PackageInfo) {
 			// just one non-nil return (too many false positives)
 			continue
 		}
-		valStr := "nil" // an untyped nil is a nil constant.Value
-		if val != nil {
-			valStr = val.String()
-		}
+		valStr := constantValueToString(val)
 		if calledInReturn(inboundCalls) {
 			continue
 		}
@@ -497,10 +504,11 @@ func (c *Checker) alwaysReceivedConst(in []*callgraph.Edge, par *ssa.Parameter, 
 			seenOrig = ""
 		}
 	}
-	if seenOrig != "" && seenOrig != seen.String() {
+	seenStr := constantValueToString(seen)
+	if seenOrig != "" && seenOrig != seenStr {
 		return fmt.Sprintf("%s (%v)", seenOrig, seen)
 	}
-	return seen.String()
+	return seenStr
 }
 
 // anyRealUse reports whether a parameter has any relevant use within its

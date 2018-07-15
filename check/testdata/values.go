@@ -72,6 +72,13 @@ func receivesSameFromGenerated(f FooType) {
 	}
 }
 
+func receivesNil(v interface{}) {
+	doWork()
+	if v != nil {
+		println(v)
+	}
+}
+
 func CallReceivers() {
 	receivesSameMany(3)
 	receivesSameMany(3)
@@ -102,5 +109,9 @@ func CallReceivers() {
 	receivesCallExpr(randRune())
 	receivesCallExpr(randRune())
 	receivesCallExpr(randRune())
+	receivesNil(nil)
+	receivesNil(nil)
+	receivesNil(nil)
+	receivesNil(nil)
 	withVariadic()
 }

@@ -42,3 +42,4 @@ testdata/values.go:12:26: receivesSameManyLit - r always receives 'a' (97)
 testdata/values.go:19:28: receivesSameManyNamed - f always receives FooConst (123)
 testdata/values.go:26:28: receivesSameManyMixed - f always receives 123
 testdata/values.go:68:32: receivesSameFromGenerated - f always receives FooType(2) (2)
+testdata/values.go:75:18: receivesNil - v always receives nil

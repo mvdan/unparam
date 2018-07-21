@@ -738,10 +738,29 @@ func requiredViaCall(fn *ssa.Function, calls []*callgraph.Edge) bool {
 			// called via fn(x())
 			return true
 		}
-		if _, ok := edge.Site.Common().Value.(*ssa.Function); !ok {
-			// called via a parameter or field, type is set in
-			// stone.
+		switch edge.Site.Common().Value.(type) {
+		case *ssa.Parameter:
+			// Func used as parameter; not safe.
 			return true
+		case *ssa.Call:
+			// Called through an interface; not safe.
+			return true
+		case *ssa.TypeAssert:
+			// Called through a type assertion; not safe.
+			return true
+		case *ssa.Const:
+			// Conservative "may implement" edge; not safe.
+			return true
+		case *ssa.UnOp:
+			// TODO: why is this not safe?
+			return true
+		case *ssa.Phi:
+			// We may run this function or another; not safe.
+			return true
+		case *ssa.Function:
+			// Called directly; the call site can easily be adapted.
+		default:
+			// Other instructions are safe or non-interesting.
 		}
 	}
 	return false

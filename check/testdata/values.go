@@ -72,9 +72,23 @@ func receivesSameFromGenerated(f FooType) {
 	}
 }
 
-func receivesNil(v interface{}) {
+func receivesSameNil(v interface{}) {
 	doWork()
 	if v != nil {
+		println(v)
+	}
+}
+
+func receivesSameInterface(v interface{}) {
+	doWork()
+	if v == false {
+		println(v)
+	}
+}
+
+func receivesInterfaceDiffType(v interface{}) {
+	doWork()
+	if v == false {
 		println(v)
 	}
 }
@@ -109,9 +123,17 @@ func CallReceivers() {
 	receivesCallExpr(randRune())
 	receivesCallExpr(randRune())
 	receivesCallExpr(randRune())
-	receivesNil(nil)
-	receivesNil(nil)
-	receivesNil(nil)
-	receivesNil(nil)
+	receivesSameNil(nil)
+	receivesSameNil(nil)
+	receivesSameNil(nil)
+	receivesSameNil(nil)
+	receivesSameInterface(123)
+	receivesSameInterface(123)
+	receivesSameInterface(123)
+	receivesSameInterface(123)
+	receivesInterfaceDiffType((*int)(nil))
+	receivesInterfaceDiffType((*int)(nil))
+	receivesInterfaceDiffType((*int)(nil))
+	receivesInterfaceDiffType((*uint)(nil))
 	withVariadic()
 }

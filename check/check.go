@@ -77,8 +77,7 @@ var (
 	_ lint.Checker = (*Checker)(nil)
 	_ lint.WithSSA = (*Checker)(nil)
 
-	errorType    = types.Universe.Lookup("error").Type()
-	unknownConst = constant.MakeUnknown()
+	errorType = types.Universe.Lookup("error").Type()
 )
 
 // lines runs the checker and returns the list of readable issues.
@@ -157,11 +156,17 @@ func generatedDoc(text string) bool {
 }
 
 // eqlConsts reports whether two constant values, possibly nil, are equal.
-func eqlConsts(v1, v2 constant.Value) bool {
-	if v1 == nil || v2 == nil {
-		return v1 == v2
+func eqlConsts(c1, c2 *ssa.Const) bool {
+	if c1 == nil || c2 == nil {
+		return c1 == c2
 	}
-	return constant.Compare(v1, token.EQL, v2)
+	if c1.Type() != c2.Type() {
+		return false
+	}
+	if c1.Value == nil || c2.Value == nil {
+		return c1.Value == c2.Value
+	}
+	return constant.Compare(c1.Value, token.EQL, c2.Value)
 }
 
 var stdSizes = types.SizesFor("gc", "amd64")
@@ -255,12 +260,12 @@ func (c *Checker) addIssue(fn *ssa.Function, pos token.Pos, format string, args 
 	})
 }
 
-// constValueString is val.String() without panicking on untyped nils.
-func constValueString(val constant.Value) string {
-	if val == nil {
-		return "nil" // an untyped nil is a nil constant.Value
+// constValueString is cnst.Value.String() without panicking on untyped nils.
+func constValueString(cnst *ssa.Const) string {
+	if cnst.Value == nil {
+		return "nil"
 	}
-	return val.String()
+	return cnst.Value.String()
 }
 
 // checkFunc checks a single function for unused parameters.
@@ -284,7 +289,7 @@ func (c *Checker) checkFunc(fn *ssa.Function, pkgInfo *loader.PackageInfo) {
 	}
 
 	results := fn.Signature.Results()
-	sameConsts := make([]constant.Value, results.Len())
+	sameConsts := make([]*ssa.Const, results.Len())
 	numRets := 0
 	allRetsExtracting := true
 	for _, block := range fn.Blocks {
@@ -297,25 +302,23 @@ func (c *Checker) checkFunc(fn *ssa.Function, pkgInfo *loader.PackageInfo) {
 			if _, ok := val.(*ssa.Extract); !ok {
 				allRetsExtracting = false
 			}
-			value := unknownConst
-			if x, ok := val.(*ssa.Const); ok {
-				value = x.Value
-			}
+			cnst := constValue(val)
 			if numRets == 0 {
-				sameConsts[i] = value
-			} else if !eqlConsts(sameConsts[i], value) {
-				sameConsts[i] = unknownConst
+				sameConsts[i] = cnst
+			} else if !eqlConsts(sameConsts[i], cnst) {
+				sameConsts[i] = nil
 			}
 		}
 		numRets++
 	}
-	for i, val := range sameConsts {
-		if val == unknownConst {
+	for i, cnst := range sameConsts {
+		if cnst == nil {
 			// no consistent returned constant
 			continue
 		}
-		if val != nil && numRets == 1 {
-			// just one non-nil return (too many false positives)
+		if cnst.Value != nil && numRets == 1 {
+			// just one return and it's not untyped nil (too many
+			// false positives)
 			continue
 		}
 		if calledInReturn(inboundCalls) {
@@ -323,7 +326,7 @@ func (c *Checker) checkFunc(fn *ssa.Function, pkgInfo *loader.PackageInfo) {
 		}
 		res := results.At(i)
 		name := paramDesc(i, res)
-		c.addIssue(fn, res.Pos(), "result %s is always %s", name, constValueString(val))
+		c.addIssue(fn, res.Pos(), "result %s is always %s", name, constValueString(cnst))
 	}
 
 resLoop:
@@ -471,7 +474,7 @@ func (c *Checker) alwaysReceivedConst(in []*callgraph.Edge, par *ssa.Parameter, 
 		// we might not have all call sites for an exported func
 		return ""
 	}
-	seen := unknownConst
+	var seen *ssa.Const
 	origPos := pos
 	if par.Parent().Signature.Recv() != nil {
 		// go/ast's CallExpr.Args does not include the receiver, but
@@ -481,8 +484,8 @@ func (c *Checker) alwaysReceivedConst(in []*callgraph.Edge, par *ssa.Parameter, 
 	seenOrig := ""
 	for _, edge := range in {
 		call := edge.Site.Common()
-		cnst, ok := call.Args[pos].(*ssa.Const)
-		if !ok {
+		cnst := constValue(call.Args[pos])
+		if cnst == nil {
 			return "" // not a constant
 		}
 		origArg := ""
@@ -492,20 +495,30 @@ func (c *Checker) alwaysReceivedConst(in []*callgraph.Edge, par *ssa.Parameter, 
 		} else {
 			origArg = nodeStr(origCall.Args[origPos])
 		}
-		if seen == unknownConst {
-			seen = cnst.Value // first constant
+		if seen == nil {
+			seen = cnst // first constant
 			seenOrig = origArg
-		} else if !eqlConsts(seen, cnst.Value) {
+		} else if !eqlConsts(seen, cnst) {
 			return "" // different constants
 		} else if origArg != seenOrig {
 			seenOrig = ""
 		}
 	}
 	seenStr := constValueString(seen)
-	if seenOrig != "" && seenOrig != seenStr {
+	if seenOrig != "" && seenStr != seenOrig {
 		return fmt.Sprintf("%s (%s)", seenOrig, seenStr)
 	}
 	return seenStr
+}
+
+func constValue(value ssa.Value) *ssa.Const {
+	switch x := value.(type) {
+	case *ssa.Const:
+		return x
+	case *ssa.MakeInterface:
+		return constValue(x.X)
+	}
+	return nil
 }
 
 // anyRealUse reports whether a parameter has any relevant use within its

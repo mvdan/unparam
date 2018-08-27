@@ -6,5 +6,12 @@ go:
 
 go_import_path: mvdan.cc/unparam
 
+env:
+  - GO11MODULE=on
+
+install: true
+
 script:
-  - go test -v ./...
+  - go get -t -d ./...
+  - go build ./...
+  - go test ./...

@@ -336,8 +336,8 @@ resLoop:
 		}
 		res := results.At(i)
 		if res.Type() == errorType {
-			// "error is never unused" is less useful, and it's up
-			// to tools like errcheck anyway.
+			// "error is never used" is less useful, and it's up to
+			// tools like errcheck anyway.
 			continue
 		}
 		count := 0

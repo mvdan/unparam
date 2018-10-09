@@ -2,7 +2,7 @@ testdata/closure.go:6:19: ClosureUse$1 - v is unused
 testdata/extractparams.go:15:24: funcResultAsParam - a is unused
 testdata/extractparams.go:20:38: (FooType).methodResultAsParam - a is unused
 testdata/extractparams.go:27:29: funcResultsAsParams - b is unused
-testdata/extractparams.go:45:26: returnResultsOwn - result 0 (./testdata.FooType) is never used
+testdata/extractparams.go:45:26: returnResultsOwn - result 0 (mvdan.cc/unparam/check/testdata.FooType) is never used
 testdata/funclit.go:4:20: parent$1 - f is unused
 testdata/ignoredrets.go:5:22: singleIgnored - result 0 (rune) is never used
 testdata/ignoredrets.go:26:27: singleIgnoredName - result r is never used

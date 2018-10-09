@@ -24,12 +24,9 @@ import (
 	"golang.org/x/tools/go/callgraph"
 	"golang.org/x/tools/go/callgraph/cha"
 	"golang.org/x/tools/go/callgraph/rta"
-	"golang.org/x/tools/go/loader"
+	"golang.org/x/tools/go/packages"
 	"golang.org/x/tools/go/ssa"
 	"golang.org/x/tools/go/ssa/ssautil"
-
-	"github.com/kisielk/gotool"
-	"mvdan.cc/lint"
 )
 
 // UnusedParams returns a list of human-readable issues that point out unused
@@ -55,7 +52,7 @@ func UnusedParams(tests bool, algo string, exported, debug bool, args ...string)
 // UnusedParams instead, unless you want to use a *loader.Program and
 // *ssa.Program directly.
 type Checker struct {
-	lprog *loader.Program
+	pkgs  []*packages.Package
 	prog  *ssa.Program
 	graph *callgraph.Graph
 
@@ -66,48 +63,53 @@ type Checker struct {
 	exported bool
 	debugLog io.Writer
 
-	issues []lint.Issue
+	issues []Issue
 
 	cachedDeclCounts map[string]map[string]int
 
 	callByPos map[token.Pos]*ast.CallExpr
 }
 
-var (
-	_ lint.Checker = (*Checker)(nil)
-	_ lint.WithSSA = (*Checker)(nil)
-
-	errorType = types.Universe.Lookup("error").Type()
-)
+var errorType = types.Universe.Lookup("error").Type()
 
 // lines runs the checker and returns the list of readable issues.
 func (c *Checker) lines(args ...string) ([]string, error) {
-	paths := gotool.ImportPaths(args)
-	conf := loader.Config{
-		ParserMode: parser.ParseComments,
+	cfg := &packages.Config{
+		Mode:  packages.LoadSyntax,
+		Tests: c.tests,
 	}
-	if _, err := conf.FromArgs(paths, c.tests); err != nil {
-		return nil, err
-	}
-	lprog, err := conf.Load()
+	pkgs, err := packages.Load(cfg, args...)
 	if err != nil {
 		return nil, err
 	}
-	prog := ssautil.CreateProgram(lprog, 0)
+	if packages.PrintErrors(pkgs) > 0 {
+		return nil, fmt.Errorf("encountered errors")
+	}
+
+	prog, _ := ssautil.Packages(pkgs, 0)
 	prog.Build()
-	c.Program(lprog)
+	c.Packages(pkgs)
 	c.ProgramSSA(prog)
 	issues, err := c.Check()
 	if err != nil {
 		return nil, err
 	}
-	lines := make([]string, len(issues))
-	for i, issue := range issues {
+	lines := make([]string, 0, len(issues))
+	prevLine := ""
+	for _, issue := range issues {
 		fpos := prog.Fset.Position(issue.Pos()).String()
 		if strings.HasPrefix(fpos, c.wd) {
 			fpos = fpos[len(c.wd)+1:]
 		}
-		lines[i] = fmt.Sprintf("%s: %s", fpos, issue.Message())
+		line := fmt.Sprintf("%s: %s", fpos, issue.Message())
+		if line == prevLine {
+			// Deduplicate lines, since we may look at the same
+			// package multiple times if tests are involved.
+			// TODO: is there a better way to handle this?
+			continue
+		}
+		prevLine = line
+		lines = append(lines, fmt.Sprintf("%s: %s", fpos, issue.Message()))
 	}
 	return lines, nil
 }
@@ -123,8 +125,8 @@ func (i Issue) Pos() token.Pos  { return i.pos }
 func (i Issue) Message() string { return i.fname + " - " + i.msg }
 
 // Program supplies Checker with the needed *loader.Program.
-func (c *Checker) Program(lprog *loader.Program) {
-	c.lprog = lprog
+func (c *Checker) Packages(pkgs []*packages.Package) {
+	c.pkgs = pkgs
 }
 
 // ProgramSSA supplies Checker with the needed *ssa.Program.
@@ -173,14 +175,15 @@ var stdSizes = types.SizesFor("gc", "amd64")
 
 // Check runs the unused parameter check and returns the list of found issues,
 // and any error encountered.
-func (c *Checker) Check() ([]lint.Issue, error) {
+func (c *Checker) Check() ([]Issue, error) {
 	c.cachedDeclCounts = make(map[string]map[string]int)
 	c.callByPos = make(map[token.Pos]*ast.CallExpr)
-	wantPkg := make(map[*types.Package]*loader.PackageInfo)
+	wantPkg := make(map[*types.Package]*packages.Package)
 	genFiles := make(map[string]bool)
-	for _, info := range c.lprog.InitialPackages() {
-		wantPkg[info.Pkg] = info
-		for _, f := range info.Files {
+	for _, pkg := range c.pkgs {
+		fmt.Println(pkg)
+		wantPkg[pkg.Types] = pkg
+		for _, f := range pkg.Syntax {
 			if len(f.Comments) > 0 && generatedDoc(f.Comments[0].Text()) {
 				fname := c.prog.Fset.Position(f.Pos()).Filename
 				genFiles[fname] = true
@@ -221,8 +224,8 @@ func (c *Checker) Check() ([]lint.Issue, error) {
 		case len(fn.Blocks) == 0: // stub
 			continue
 		}
-		pkgInfo := wantPkg[fn.Pkg.Pkg]
-		if pkgInfo == nil { // not part of given pkgs
+		pkg := wantPkg[fn.Pkg.Pkg]
+		if pkg == nil { // not part of given pkgs
 			continue
 		}
 		if c.exported || fn.Pkg.Pkg.Name() == "main" {
@@ -238,7 +241,7 @@ func (c *Checker) Check() ([]lint.Issue, error) {
 			continue // generated file
 		}
 
-		c.checkFunc(fn, pkgInfo)
+		c.checkFunc(fn, pkg)
 	}
 	sort.Slice(c.issues, func(i, j int) bool {
 		p1 := c.prog.Fset.Position(c.issues[i].Pos())
@@ -269,7 +272,7 @@ func constValueString(cnst *ssa.Const) string {
 }
 
 // checkFunc checks a single function for unused parameters.
-func (c *Checker) checkFunc(fn *ssa.Function, pkgInfo *loader.PackageInfo) {
+func (c *Checker) checkFunc(fn *ssa.Function, pkg *packages.Package) {
 	c.debug("func %s\n", fn.RelString(fn.Package().Pkg))
 	if dummyImpl(fn.Blocks[0]) { // panic implementation
 		c.debug("  skip - dummy implementation\n")
@@ -283,7 +286,7 @@ func (c *Checker) checkFunc(fn *ssa.Function, pkgInfo *loader.PackageInfo) {
 		c.debug("  skip - type is required via call\n")
 		return
 	}
-	if c.multipleImpls(pkgInfo, fn) {
+	if c.multipleImpls(pkg, fn) {
 		c.debug("  skip - multiple implementations via build tags\n")
 		return
 	}
@@ -395,7 +398,7 @@ resLoop:
 }
 
 // mainPackages returns the subset of main packages within pkgSet.
-func mainPackages(prog *ssa.Program, pkgSet map[*types.Package]*loader.PackageInfo) ([]*ssa.Package, error) {
+func mainPackages(prog *ssa.Program, pkgSet map[*types.Package]*packages.Package) ([]*ssa.Package, error) {
 	mains := make([]*ssa.Package, 0, len(pkgSet))
 	for tpkg := range pkgSet {
 		pkg := prog.Package(tpkg)
@@ -641,6 +644,11 @@ func (c *Checker) declCounts(pkgDir string, pkgName string) map[string]int {
 		c.cachedDeclCounts[pkgDir] = nil
 		return nil
 	}
+	if len(pkgs) == 0 {
+		// TODO: investigate why this started happening after switching
+		// to go/packages
+		return nil
+	}
 	pkg := pkgs[pkgName]
 	count := make(map[string]int)
 	for _, file := range pkg.Files {
@@ -682,12 +690,12 @@ func recvPrefix(recv *ast.FieldList) string {
 // source code. For example, if there are different function bodies depending on
 // the operating system or architecture. That tends to mean that an unused
 // parameter in one implementation may not be unused in another.
-func (c *Checker) multipleImpls(info *loader.PackageInfo, fn *ssa.Function) bool {
+func (c *Checker) multipleImpls(pkg *packages.Package, fn *ssa.Function) bool {
 	if fn.Parent() != nil { // nested func
 		return false
 	}
 	path := c.prog.Fset.Position(fn.Pos()).Filename
-	count := c.declCounts(filepath.Dir(path), info.Pkg.Name())
+	count := c.declCounts(filepath.Dir(path), pkg.Types.Name())
 	name := fn.Name()
 	if fn.Signature.Recv() != nil {
 		tp := fn.Params[0].Type()

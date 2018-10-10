@@ -4,7 +4,7 @@ go:
   - 1.10.x
   - 1.11.x
 
-go_import_path: mvdan.cc/unparam
+go_import_path: github.com/mvdan/unparam
 
 env:
   - GO111MODULE=on

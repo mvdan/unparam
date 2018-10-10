@@ -1,5 +1,6 @@
 github.com/kisielk/gotool v1.0.0 h1:AV2c/EiW3KqPNT9ZKl07ehoAGi4C5/01Cfbblndcapg=
 github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+oQHNcck=
+github.com/mvdan/lint v0.0.0-20170908181259-adc824a0674b/go.mod h1:XD5S+wekDbY/hz8elAl7F+EtNk9+ZGhSoxUUPVvX2L8=
 golang.org/x/tools v0.0.0-20180826000951-f6ba57429505 h1:A7IWEQZw8yuHhjAcYjsnhC1/6KYEknVQYRVmhut3Gzk=
 golang.org/x/tools v0.0.0-20180826000951-f6ba57429505/go.mod h1:n7NCudcB/nEzxVGmLbDWY5pfWTLqBcC2KZ6jyYvM4mQ=
 golang.org/x/tools v0.0.0-20181008205924-a2b3f7f249e9 h1:T3nuFyXXDj5KXX9CqQm/r/YEL4Gua01s/ZEdfdLyJ2c=

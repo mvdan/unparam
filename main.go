@@ -11,7 +11,7 @@ import (
 
 	"golang.org/x/tools/go/buildutil"
 
-	"mvdan.cc/unparam/check"
+	"github.com/mvdan/unparam/check"
 )
 
 var (

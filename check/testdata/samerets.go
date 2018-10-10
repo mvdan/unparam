@@ -5,8 +5,8 @@ func singleReturn() int {
 	return 3
 }
 
-func manyReturns() int {
-	if cond {
+func manyReturns(i int64) int {
+	if i > 3 {
 		doWork()
 		return 3
 	}

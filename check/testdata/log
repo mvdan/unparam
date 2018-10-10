@@ -17,7 +17,7 @@ testdata/names.go:3:18: regularName - f is unused
 testdata/reused.go:3:24: reusedRecursively - f is unused
 testdata/reused.go:24:32: unusedVariadic - bs is unused
 testdata/reused.go:29:43: reusedRecursivelyVariadic - bs is unused
-testdata/samerets.go:8:20: manyReturns - result 0 (int) is always 3
+testdata/samerets.go:8:27: manyReturns - result 0 (int) is always 3
 testdata/samerets.go:26:29: manyReturnsMultiple - result b is always true
 testdata/samerets.go:26:37: manyReturnsMultiple - result s is always "foo"
 testdata/samerets.go:34:30: singleNilError - result 1 (error) is always nil

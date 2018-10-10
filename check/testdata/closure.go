@@ -1,6 +1,5 @@
 package foo
 
-
 func ClosureUse() {
 	var enclosed FooType
 	setValue := func(v *FooType) {

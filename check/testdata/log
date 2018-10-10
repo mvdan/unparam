@@ -1,4 +1,4 @@
-testdata/closure.go:6:19: ClosureUse$1 - v is unused
+testdata/closure.go:5:19: ClosureUse$1 - v is unused
 testdata/extractparams.go:15:24: funcResultAsParam - a is unused
 testdata/extractparams.go:20:38: (FooType).methodResultAsParam - a is unused
 testdata/extractparams.go:27:29: funcResultsAsParams - b is unused

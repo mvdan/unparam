@@ -181,7 +181,6 @@ func (c *Checker) Check() ([]Issue, error) {
 	wantPkg := make(map[*types.Package]*packages.Package)
 	genFiles := make(map[string]bool)
 	for _, pkg := range c.pkgs {
-		fmt.Println(pkg)
 		wantPkg[pkg.Types] = pkg
 		for _, f := range pkg.Syntax {
 			if len(f.Comments) > 0 && generatedDoc(f.Comments[0].Text()) {

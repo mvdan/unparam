@@ -41,5 +41,7 @@ func main() {
 	for _, warn := range warns {
 		fmt.Println(warn)
 	}
-	os.Exit(len(warns))
+	if len(warns) > 0 {
+		os.Exit(2)
+	}
 }

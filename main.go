@@ -42,6 +42,6 @@ func main() {
 		fmt.Println(warn)
 	}
 	if len(warns) > 0 {
-		os.Exit(2)
+		os.Exit(1)
 	}
 }

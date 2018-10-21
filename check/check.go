@@ -75,7 +75,7 @@ var errorType = types.Universe.Lookup("error").Type()
 // lines runs the checker and returns the list of readable issues.
 func (c *Checker) lines(args ...string) ([]string, error) {
 	cfg := &packages.Config{
-		Mode:  packages.LoadAllSyntax,
+		Mode:  packages.LoadSyntax,
 		Tests: c.tests,
 	}
 	pkgs, err := packages.Load(cfg, args...)

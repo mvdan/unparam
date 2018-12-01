@@ -67,7 +67,12 @@ type Checker struct {
 
 	cachedDeclCounts map[string]map[string]int
 
+	// callByPos maps from a call site position to its CallExpr.
 	callByPos map[token.Pos]*ast.CallExpr
+
+	// funcBodyByPos maps from a function position to its body. We can't map
+	// to the declaration, as that could be either a FuncDecl or FuncLit.
+	funcBodyByPos map[token.Pos]*ast.BlockStmt
 }
 
 var errorType = types.Universe.Lookup("error").Type()
@@ -178,6 +183,7 @@ var stdSizes = types.SizesFor("gc", "amd64")
 func (c *Checker) Check() ([]Issue, error) {
 	c.cachedDeclCounts = make(map[string]map[string]int)
 	c.callByPos = make(map[token.Pos]*ast.CallExpr)
+	c.funcBodyByPos = make(map[token.Pos]*ast.BlockStmt)
 	wantPkg := make(map[*types.Package]*packages.Package)
 	genFiles := make(map[string]bool)
 	for _, pkg := range c.pkgs {
@@ -188,8 +194,16 @@ func (c *Checker) Check() ([]Issue, error) {
 				genFiles[fname] = true
 			}
 			ast.Inspect(f, func(node ast.Node) bool {
-				if ce, ok := node.(*ast.CallExpr); ok {
-					c.callByPos[ce.Lparen] = ce
+				switch node := node.(type) {
+				case *ast.CallExpr:
+					c.callByPos[node.Lparen] = node
+				// ssa.Function.Pos returns the declaring
+				// FuncLit.Type.Func or the position of the
+				// FuncDecl.Name.
+				case *ast.FuncDecl:
+					c.funcBodyByPos[node.Name.Pos()] = node.Body
+				case *ast.FuncLit:
+					c.funcBodyByPos[node.Pos()] = node.Body
 				}
 				return true
 			})
@@ -388,7 +402,7 @@ resLoop:
 		constStr := c.alwaysReceivedConst(inboundCalls, par, i)
 		if constStr != "" {
 			reason = fmt.Sprintf("always receives %s", constStr)
-		} else if anyRealUse(par, i) {
+		} else if c.anyRealUse(par, i, pkg) {
 			c.debug("  skip - used somewhere in the func body\n")
 			continue
 		}
@@ -526,9 +540,30 @@ func constValue(value ssa.Value) *ssa.Const {
 // anyRealUse reports whether a parameter has any relevant use within its
 // function body. Certain uses are ignored, such as recursive calls where the
 // parameter is re-used as itself.
-func anyRealUse(par *ssa.Parameter, pos int) bool {
+func (c *Checker) anyRealUse(par *ssa.Parameter, pos int, pkg *packages.Package) bool {
+	refs := *par.Referrers()
+	if len(refs) == 0 {
+		// Look for any uses like "_ = par", which are the developer's
+		// way to tell they want to keep the parameter. SSA does not
+		// keep that kind of statement around.
+		body := c.funcBodyByPos[par.Parent().Pos()]
+		any := false
+		ast.Inspect(body, func(node ast.Node) bool {
+			if any {
+				return false
+			}
+			if id, ok := node.(*ast.Ident); ok {
+				obj := pkg.TypesInfo.Uses[id]
+				if obj != nil && obj.Pos() == par.Pos() {
+					any = true
+				}
+			}
+			return true
+		})
+		return any
+	}
 refLoop:
-	for _, ref := range *par.Referrers() {
+	for _, ref := range refs {
 		switch x := ref.(type) {
 		case *ssa.Call:
 			if x.Call.Value != par.Parent() {

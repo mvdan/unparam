@@ -14,6 +14,7 @@ testdata/ignoredrets.go:81:29: ignoredGoDefer - result 1 (string) is never used
 testdata/main/main.go:3:19: OneUnused - b is unused
 testdata/methods.go:5:28: (FooType).oneUnused - a is unused
 testdata/names.go:3:18: regularName - f is unused
+testdata/paramuses.go:24:36: notUsedInUnderscoreAssignment - s is unused
 testdata/reused.go:3:24: reusedRecursively - f is unused
 testdata/reused.go:24:32: unusedVariadic - bs is unused
 testdata/reused.go:29:43: reusedRecursivelyVariadic - bs is unused
@@ -32,7 +33,6 @@ testdata/stubs.go:13:42: nonPanicImpl - f is unused
 testdata/stubs.go:30:43: nonPanicImpl2 - f is unused
 testdata/stubs.go:45:19: nonConstImpl - f is unused
 testdata/stubs.go:45:30: nonConstImpl - s is unused
-testdata/stubs.go:49:32: oneOverwritten - i is unused
 testdata/tags_main.go:5:23: oneUnusedMain - b is unused
 testdata/tags_main.go:24:22: multImplsMethod - f is unused
 testdata/testpkg_test.go:5:20: oneUnused3 - b is unused

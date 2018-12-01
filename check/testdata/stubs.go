@@ -47,7 +47,7 @@ func nonConstImpl(f FooType, s string) error { return Sink.(error) }
 func logImpl(f FooType) { log.Print("not implemented") }
 
 func oneOverwritten(a FooType, i uint8) (FooType, uint8) {
-	i = 3
+	i = 3 // TODO: skip this as a real use, without breaking "_ = i"
 	a += 1
 	return a, i
 }

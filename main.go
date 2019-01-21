@@ -15,33 +15,45 @@ import (
 )
 
 var (
-	algo = flag.String("algo", "cha", `call graph construction algorithm (cha, rta).
+	flagSet = flag.NewFlagSet("unparam", flag.ContinueOnError)
+
+	algo = flagSet.String("algo", "cha", `call graph construction algorithm (cha, rta).
 in general, use cha for libraries, and rta for programs with main packages.`)
-	tests    = flag.Bool("tests", true, "include tests")
-	exported = flag.Bool("exported", false, "inspect exported functions")
-	debug    = flag.Bool("debug", false, "debug prints")
+	tests    = flagSet.Bool("tests", true, "include tests")
+	exported = flagSet.Bool("exported", false, "inspect exported functions")
+	debug    = flagSet.Bool("debug", false, "debug prints")
 )
 
 func init() {
-	flag.Var((*buildutil.TagsFlag)(&build.Default.BuildTags), "tags",
+	flagSet.Var((*buildutil.TagsFlag)(&build.Default.BuildTags), "tags",
 		buildutil.TagsFlagDoc)
 }
 
 func main() {
-	flag.Usage = func() {
+	os.Exit(main1())
+}
+
+func main1() int {
+	flagSet.Usage = func() {
 		fmt.Fprintln(os.Stderr, "usage: unparam [flags] [package ...]")
-		flag.PrintDefaults()
+		flagSet.PrintDefaults()
 	}
-	flag.Parse()
-	warns, err := check.UnusedParams(*tests, *algo, *exported, *debug, flag.Args()...)
+	if err := flagSet.Parse(os.Args[1:]); err != nil {
+		if err != flag.ErrHelp {
+			fmt.Fprintln(os.Stderr, err)
+		}
+		return 1
+	}
+	warns, err := check.UnusedParams(*tests, *algo, *exported, *debug, flagSet.Args()...)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		return 1
 	}
 	for _, warn := range warns {
 		fmt.Println(warn)
 	}
 	if len(warns) > 0 {
-		os.Exit(1)
+		return 1
 	}
+	return 0
 }

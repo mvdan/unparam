@@ -1,9 +1,29 @@
+env HOME=$WORK/home
+
+! unparam .
+cmp stdout stdout.golden
+
+-- go.mod --
+module testdata.tld/foo
+-- stdout.golden --
+foo.go:9:22: singleIgnored - result 0 (rune) is never used
+foo.go:30:27: singleIgnoredName - result r is never used
+foo.go:40:33: singleIgnoredUnderscore - result 0 (rune) is never used
+foo.go:50:20: allIgnored - result 0 (int) is never used
+foo.go:50:25: allIgnored - result 1 (string) is never used
+foo.go:60:26: someIgnored - result 1 (string) is never used
+foo.go:85:29: ignoredGoDefer - result 1 (string) is never used
+-- foo.go --
 package foo
 
 import "errors"
 
+var DoWork func()
+
+var Cond bool
+
 func singleIgnored() rune {
-	doWork()
+	DoWork()
 	return '0'
 }
 
@@ -13,7 +33,7 @@ func SingleIgnoredUse() {
 }
 
 func singleNotIgnored() rune {
-	doWork()
+	DoWork()
 	return '0'
 }
 
@@ -24,7 +44,7 @@ func SingleNotIgnoredUse() {
 }
 
 func singleIgnoredName() (r rune) {
-	doWork()
+	DoWork()
 	return '0'
 }
 
@@ -34,7 +54,7 @@ func SingleIgnoredNameUse() {
 }
 
 func singleIgnoredUnderscore() (_ rune) {
-	doWork()
+	DoWork()
 	return '0'
 }
 
@@ -44,7 +64,7 @@ func SingleIgnoredUnderscoreUse() {
 }
 
 func allIgnored() (int, string) {
-	doWork()
+	DoWork()
 	return 2, "foo"
 }
 
@@ -54,7 +74,7 @@ func AllIgnoredUse() {
 }
 
 func someIgnored() (int, string) {
-	doWork()
+	DoWork()
 	return 2, "foo"
 }
 
@@ -65,8 +85,8 @@ func SomeIgnoredUse() {
 }
 
 func errorIgnored() (int, error) {
-	doWork()
-	if cond {
+	DoWork()
+	if Cond {
 		return 3, errors.New("foo")
 	}
 	return 2, nil
@@ -79,7 +99,7 @@ func ErrorIgnoredUse() {
 }
 
 func ignoredGoDefer() (int, string) {
-	doWork()
+	DoWork()
 	return 2, "bar"
 }
 

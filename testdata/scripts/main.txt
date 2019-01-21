@@ -1,3 +1,13 @@
+env HOME=$WORK/home
+
+! unparam .
+cmp stdout stdout.golden
+
+-- go.mod --
+module testdata.tld/foo
+-- stdout.golden --
+main.go:3:19: OneUnused - b is unused
+-- main.go --
 package main
 
 func OneUnused(a, b uint) uint {

@@ -1,0 +1,28 @@
+env HOME=$WORK/home
+
+! unparam .
+cmp stdout stdout.golden
+
+-- go.mod --
+module testdata.tld/foo
+-- stdout.golden --
+foo.go:7:19: oneUnused - b is unused
+foo.go:15:18: sliceUnused - f is unused
+-- foo.go --
+package foo
+
+var DoWork func()
+
+func allUsed(a, b int) int { return a + b }
+
+func oneUnused(a, b int) int {
+        return a + 123
+}
+
+type fooStruct struct {
+	f int
+}
+
+func sliceUnused(f []fooStruct) {
+        DoWork()
+}

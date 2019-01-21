@@ -1,0 +1,23 @@
+env HOME=$WORK/home
+
+! unparam .
+cmp stdout stdout.golden
+
+-- go.mod --
+module testdata.tld/foo
+-- stdout.golden --
+foo.go:5:18: regularName - f is unused
+-- foo.go --
+package foo
+
+var DoWork func()
+
+func regularName(f int) { DoWork() }
+
+func noName(int) { DoWork() }
+
+func underscoreName(_ int) { DoWork() }
+
+func zeroSizeStruct(f struct{}) { DoWork() }
+
+func zeroSizeArray(f [0]bool) { DoWork() }

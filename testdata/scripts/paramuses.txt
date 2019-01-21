@@ -1,9 +1,23 @@
+env HOME=$WORK/home
+
+! unparam .
+cmp stdout stdout.golden
+
+-- go.mod --
+module testdata.tld/foo
+-- stdout.golden --
+foo.go:28:36: notUsedInUnderscoreAssignment - s is unused
+-- foo.go --
 package foo
 
 import (
 	"net/http"
 	"time"
 )
+
+var DoWork func()
+
+var Sink interface{}
 
 func UsedInFuncLit(s string) func() {
 	return func() {
@@ -17,7 +31,7 @@ func StructUsedInField(path string, expiry time.Time) {
 
 func usedInUnderscoreAssignment(s string, d time.Duration) {
 	_ = s
-	doWork()
+	DoWork()
 	Sink = d
 }
 
@@ -26,6 +40,6 @@ func notUsedInUnderscoreAssignment(s string, d time.Duration) {
 		s := 123
 		_ = s
 	}
-	doWork()
+	DoWork()
 	Sink = d
 }

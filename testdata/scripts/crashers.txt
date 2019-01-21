@@ -1,0 +1,19 @@
+env HOME=$WORK/home
+
+! unparam .
+cmp stdout stdout.golden
+
+-- go.mod --
+module testdata.tld/foo
+-- stdout.golden --
+foo.go:3:19: oneUnused - b is unused
+-- foo.go --
+package foo
+
+func oneUnused(a, b int) int {
+        return a + 123
+}
+
+type RecursiveIface interface {
+	Foo(RecursiveIface)
+}

@@ -1,0 +1,47 @@
+env HOME=$WORK/home
+
+! unparam .
+cmp stdout stdout.golden
+
+-- go.mod --
+module testdata.tld/foo
+-- stdout.golden --
+foo.go:5:24: reusedRecursively - f is unused
+foo.go:26:28: unusedVariadic - bs is unused
+foo.go:31:39: reusedRecursivelyVariadic - bs is unused
+-- foo.go --
+package foo
+
+var DoWork func()
+
+func reusedRecursively(f int, b bool) rune {
+	if !b {
+		return 0
+	}
+	return reusedRecursively(f, b)
+}
+
+func reusedRecursivelySwapped(f1, f2 int, b bool) rune {
+	if !b {
+		return 0
+	}
+	return reusedRecursivelySwapped(f2, f1, b)
+}
+
+func reusedRecursivelyModified(f int, b bool) rune {
+	if !b {
+		return 0
+	}
+	return reusedRecursivelyModified(f+int(1), b)
+}
+
+func unusedVariadic(a int, bs ...byte) {
+	DoWork()
+	println(a)
+}
+
+func reusedRecursivelyVariadic(a int, bs ...byte) {
+	if a == 0 {
+		reusedRecursivelyVariadic(a, bs...)
+	}
+}

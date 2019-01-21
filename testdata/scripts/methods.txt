@@ -1,0 +1,18 @@
+env HOME=$WORK/home
+
+! unparam .
+cmp stdout stdout.golden
+
+-- go.mod --
+module testdata.tld/foo
+-- stdout.golden --
+foo.go:8:28: (FooType).oneUnused - a is unused
+-- foo.go --
+package foo
+
+// TODO: false negative if unexported?
+type FooType int
+
+func (f FooType) allUsed(a FooType) FooType { return f + a }
+
+func (f FooType) oneUnused(a FooType) FooType { return 2 * f }

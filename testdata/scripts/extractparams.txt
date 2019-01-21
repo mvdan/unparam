@@ -1,31 +1,50 @@
+env HOME=$WORK/home
+
+! unparam .
+cmp stdout stdout.golden
+
+-- go.mod --
+module testdata.tld/foo
+-- stdout.golden --
+foo.go:21:24: funcResultAsParam - a is unused
+foo.go:26:38: (FooType).methodResultAsParam - a is unused
+foo.go:33:29: funcResultsAsParams - b is unused
+foo.go:51:26: returnResultsOwn - result 0 (testdata.tld/foo.FooType) is never used
+-- foo.go --
 package foo
 
+var DoWork func()
+
+var Sink interface{}
+
+type FooType int
+
 func funcResultAsParams(a, b FooType) FooType {
-	doWork()
+	DoWork()
 	return a + 1
 }
 
 func (f FooType) methodResultAsParams(a, b FooType) FooType {
-	doWork()
+	DoWork()
 	return a + 1
 }
 
 func generateResults() (a, b FooType) { return }
 
 func funcResultAsParam(a FooType) FooType {
-	doWork()
+	DoWork()
 	return 3
 }
 
 func (f FooType) methodResultAsParam(a FooType) FooType {
-	doWork()
+	DoWork()
 	return 3
 }
 
 func generateResult() (a FooType) { return }
 
 func funcResultsAsParams(a, b FooType) FooType {
-	doWork()
+	DoWork()
 	return a + 1
 }
 

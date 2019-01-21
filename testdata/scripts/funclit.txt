@@ -1,0 +1,22 @@
+env HOME=$WORK/home
+
+! unparam .
+cmp stdout stdout.golden
+
+-- go.mod --
+module testdata.tld/foo
+-- stdout.golden --
+foo.go:8:20: parent$1 - f is unused
+-- foo.go --
+package foo
+
+var DoWork func()
+
+var Sink interface{}
+
+func parent() {
+	oneUnused := func(f int) {
+		DoWork()
+	}
+	Sink = oneUnused
+}

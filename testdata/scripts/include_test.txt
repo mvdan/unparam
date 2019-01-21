@@ -1,0 +1,32 @@
+env HOME=$WORK/home
+
+! unparam .
+stdout 'fooUnused .* unused'
+stdout 'footestUnused .* unused'
+stdout 'footestpkgUnused .* unused'
+
+! unparam -tests=false .
+stdout 'fooUnused .* unused'
+! stdout 'footestUnused .* unused'
+! stdout 'footestpkgUnused .* unused'
+
+-- go.mod --
+module testdata.tld/foo
+-- foo.go --
+package foo
+
+func fooUnused(a, b int) int {
+        return a + 123
+}
+-- foo_test.go --
+package foo
+
+func footestUnused(a, b int) int {
+        return a + 123
+}
+-- foopkg_test.go --
+package foo_test
+
+func footestpkgUnused(a, b int) int {
+        return a + 123
+}

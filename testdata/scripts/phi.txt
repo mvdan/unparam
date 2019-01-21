@@ -1,13 +1,22 @@
+env HOME=$WORK/home
+
+! unparam .
+cmp stdout stdout.golden
+
+-- go.mod --
+module testdata.tld/foo
+-- stdout.golden --
+-- foo.go --
 package foo
 
 func allUsedPhi(a, b FooType) *FooType {
-	doWork()
+	DoWork()
 	c := a + b
 	return &c
 }
 
 func oneUnusedPhi(a, b FooType) *FooType {
-	doWork()
+	DoWork()
 	c := a + 4
 	return &c
 }

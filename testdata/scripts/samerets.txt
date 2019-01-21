@@ -1,21 +1,42 @@
+env HOME=$WORK/home
+
+! unparam .
+cmp stdout stdout.golden
+
+-- go.mod --
+module testdata.tld/foo
+-- stdout.golden --
+foo.go:12:27: manyReturns - result 0 (int) is always 3
+foo.go:30:29: manyReturnsMultiple - result b is always true
+foo.go:30:37: manyReturnsMultiple - result s is always "foo"
+foo.go:38:30: singleNilError - result 1 (error) is always nil
+foo.go:43:28: manyNilError - result 1 (error) is always nil
+foo.go:74:39: doubleReturnNotForwarded - result 1 (error) is always nil
+foo.go:86:29: neverForwarded - result 1 (error) is always nil
+foo.go:93:50: (FooType).neverForwardedPtrMethod - result 1 (error) is always nil
+-- foo.go --
 package foo
 
+var DoWork func()
+
+var Cond bool
+
 func singleReturn() int {
-	doWork()
+	DoWork()
 	return 3
 }
 
 func manyReturns(i int64) int {
 	if i > 3 {
-		doWork()
+		DoWork()
 		return 3
 	}
 	return 3
 }
 
 func manyReturnsDifferent(b bool) int {
-	for cond {
-		doWork()
+	for Cond {
+		DoWork()
 		if b {
 			return 4
 		}
@@ -24,21 +45,21 @@ func manyReturnsDifferent(b bool) int {
 }
 
 func manyReturnsMultiple() (b bool, s string) {
-	if cond {
-		doWork()
+	if Cond {
+		DoWork()
 		return true, "foo"
 	}
 	return true, "foo"
 }
 
 func singleNilError() (bool, error) {
-	doWork()
+	DoWork()
 	return true, nil
 }
 
 func manyNilError() (bool, error) {
-	if cond {
-		doWork()
+	if Cond {
+		DoWork()
 		return false, nil
 	}
 	return true, nil
@@ -48,49 +69,51 @@ func manyReturnsForwarded(r rune) int {
 	if r == '3' {
 		return 5
 	}
-	doWork()
+	DoWork()
 	return 5
 }
 
 func forwarding(r rune) int {
-	doWork()
+	DoWork()
 	return manyReturnsForwarded(r)
 }
 
 func doubleReturnForwarded() (int, error) {
-	doWork()
+	DoWork()
 	return 5, nil
 }
 
 func forwardingDouble() (int, error) {
-	doWork()
+	DoWork()
 	return doubleReturnForwarded()
 }
 
 func doubleReturnNotForwarded() (int, error) {
-	doWork()
+	DoWork()
 	return 5, nil
 }
 
 func falseForwardinggDouble() (int, error) {
-	doWork()
+	DoWork()
 	n, err := doubleReturnNotForwarded()
 	println(n)
 	return 2, err
 }
 
 func neverForwarded() (int, error) {
-	doWork()
+	DoWork()
 	return 5, nil
 }
 
+type FooType int
+
 func (f FooType) neverForwardedPtrMethod() (int, error) {
-	doWork()
+	DoWork()
 	return 5, nil
 }
 
 func neverForwarding() {
-	doWork()
+	DoWork()
 	neverForwarded()
 	f := new(FooType)
 	f.neverForwardedPtrMethod()

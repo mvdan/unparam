@@ -1,0 +1,63 @@
+env HOME=$WORK/home
+
+! unparam .
+cmp stdout stdout.golden
+
+-- go.mod --
+module testdata.tld/foo
+-- stdout.golden --
+foo_main.go:5:23: oneUnusedMain - b is unused
+foo_main.go:24:22: multImplsMethod - f is unused
+-- foo.go --
+package foo
+
+var DoWork func()
+
+type FooType int
+-- foo_main.go --
+//+build !other
+
+package foo
+
+func oneUnusedMain(a, b int) int {
+        return a + 2
+}
+
+func multipleImpls(f int) int32 {
+        DoWork()
+        return 3
+}
+
+func (f FooType) multImplsMethod(f2 int) uint32 {
+        DoWork()
+        return 3
+}
+
+func (f *FooType) multImplsMethod2(f3 int) int64 {
+        DoWork()
+        return 3
+}
+
+func multImplsMethod(f int) uint64 {
+        DoWork()
+        return 3
+}
+-- foo_other.go --
+//+build other
+
+package foo
+
+func multipleImpls(f int) int32 {
+        DoWork()
+        return int32(f)
+}
+
+func (f FooType) multImplsMethod(f2 int) uint32 {
+        DoWork()
+        return uint32(f)
+}
+
+func (f *FooType) multImplsMethod2(f3 int) int64 {
+        DoWork()
+        return int64(*f)
+}

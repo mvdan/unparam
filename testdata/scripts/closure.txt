@@ -1,0 +1,22 @@
+env HOME=$WORK/home
+
+! unparam .
+cmp stdout stdout.golden
+
+-- go.mod --
+module testdata.tld/foo
+-- stdout.golden --
+foo.go:5:19: ClosureUse$1 - v is unused
+-- foo.go --
+package foo
+
+func ClosureUse() {
+	var enclosed int
+	setValue := func(v *int) {
+		enclosed = 2
+	}
+	var newValue int = 4
+	println(enclosed)
+	setValue(&newValue)
+	println(enclosed)
+}

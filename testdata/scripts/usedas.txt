@@ -1,23 +1,38 @@
+env HOME=$WORK/home
+
+! unparam .
+cmp stdout stdout.golden
+
+-- go.mod --
+module testdata.tld/foo
+-- stdout.golden --
+foo.go:53:22: UsedAsArg$4 - u is unused
+foo.go:71:36: usedAsIfaceNothing - i is unused
+-- foo.go --
 package foo
+
+type FooType int
+
+var DoWork func()
 
 func funcAsParam(fn func(FooType) string) { fn(0) }
 
 func passedAsParam(f FooType) string {
-	doWork()
+	DoWork()
 	return "foo"
 }
 
 func (f FooType) funcAsParam2(fn func(FooType) []byte) { fn(0) }
 
 func passedAsParam2(f FooType) []byte {
-	doWork()
+	DoWork()
 	return nil
 }
 
 func AnonType() {
 	for _, f := range []func(FooType, int32){
 		func(f FooType, i int32) {
-			doWork()
+			DoWork()
 			println(i)
 		},
 	} {
@@ -27,7 +42,7 @@ func AnonType() {
 		f2 func(f FooType, i int64)
 	}{
 		{f2: func(f FooType, i int64) {
-			doWork()
+			DoWork()
 			println(i)
 		}},
 	} {
@@ -40,7 +55,7 @@ func UsedAsArg() {
 		f(5, 6)
 	}
 	bar := func(v interface{}) {
-		doWork()
+		DoWork()
 		println(v)
 	}
 	foo(func(f FooType, u uint32) {
@@ -56,7 +71,7 @@ func globalParam(f func(f FooType, i int8)) {
 }
 
 func usedAsGlobalArg(f FooType, i int8) {
-	doWork()
+	DoWork()
 	println(f)
 }
 
@@ -65,7 +80,7 @@ func paramIfaceNothing(f interface{}) {
 }
 
 func usedAsIfaceNothing(f FooType, i int16) {
-	doWork()
+	DoWork()
 	println(f)
 }
 
@@ -75,7 +90,7 @@ func paramIfaceAssert(f interface{}) {
 }
 
 func usedAsIfaceAssert(f FooType, i *rune) {
-	doWork()
+	DoWork()
 	println(f)
 }
 
@@ -92,7 +107,7 @@ type barIface interface {
 type barType struct{}
 
 func (b *barType) bar(f FooType, u uint16) {
-	doWork()
+	DoWork()
 	println(f)
 }
 
@@ -105,7 +120,7 @@ func BarIfaceUse() {
 
 func (f FooType) methodPassedAsParam(f2 FooType) bool {
 	if f == 3 {
-		doWork()
+		DoWork()
 		return true
 	}
 	return true
@@ -113,7 +128,7 @@ func (f FooType) methodPassedAsParam(f2 FooType) bool {
 
 func (f FooType) methodPassedAsParam2() bool {
 	if f == 4 {
-		doWork()
+		DoWork()
 		return true
 	}
 	return true

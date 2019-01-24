@@ -222,16 +222,13 @@ func (c *Checker) Check() ([]Issue, error) {
 							c.funcUsedAs[fn] = "param"
 						}
 					}
-				case *ssa.FieldAddr:
-					for _, ref := range *instr.Referrers() {
-						store, ok := ref.(*ssa.Store)
-						if !ok || store.Addr != instr {
-							continue
-						}
-						if fn := findFunction(store.Val); fn != nil {
-							// x.someField = fn
-							c.funcUsedAs[fn] = "field"
-						}
+				case *ssa.Store:
+					if _, ok := instr.Addr.(*ssa.FieldAddr); !ok {
+						break
+					}
+					if fn := findFunction(instr.Val); fn != nil {
+						// x.someField = fn
+						c.funcUsedAs[fn] = "field"
 					}
 				case *ssa.ChangeType:
 					if fn := findFunction(instr.X); fn != nil {

@@ -218,6 +218,7 @@ func (c *Checker) Check() ([]Issue, error) {
 				case *ssa.Call:
 					for _, arg := range instr.Call.Args {
 						if fn := findFunction(arg); fn != nil {
+							// someFunc(fn)
 							c.funcUsedAs[fn] = "param"
 						}
 					}
@@ -228,8 +229,14 @@ func (c *Checker) Check() ([]Issue, error) {
 							continue
 						}
 						if fn := findFunction(store.Val); fn != nil {
+							// x.someField = fn
 							c.funcUsedAs[fn] = "field"
 						}
+					}
+				case *ssa.ChangeType:
+					if fn := findFunction(instr.X); fn != nil {
+						// someType(fn)
+						c.funcUsedAs[fn] = "type conversion"
 					}
 				}
 			}

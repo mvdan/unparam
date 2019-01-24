@@ -163,3 +163,10 @@ var usedAsGlobalInterfaceField = FuncInterfaceField {
 		}
 	},
 }
+
+type SomeFuncType func(string, string) string
+
+var convertedToType = SomeFuncType(func(a, b string) string {
+	DoWork()
+	return a
+})

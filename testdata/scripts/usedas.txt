@@ -6,8 +6,7 @@ cmp stdout stdout.golden
 -- go.mod --
 module testdata.tld/foo
 -- stdout.golden --
-foo.go:55:22: UsedAsArg$4 - u is unused
-foo.go:73:36: usedAsIfaceNothing - i is unused
+foo.go:9:19: oneUnused - b is unused
 -- foo.go --
 package foo
 
@@ -16,6 +15,10 @@ import "net/http"
 type FooType int
 
 var DoWork func()
+
+func oneUnused(a, b int) int {
+        return a + 123
+}
 
 func funcAsParam(fn func(FooType) string) { fn(0) }
 
@@ -77,29 +80,8 @@ func usedAsGlobalArg(f FooType, i int8) {
 	println(f)
 }
 
-func paramIfaceNothing(f interface{}) {
-	println(f)
-}
-
-func usedAsIfaceNothing(f FooType, i int16) {
-	DoWork()
-	println(f)
-}
-
-func paramIfaceAssert(f interface{}) {
-	fn := f.(func(FooType, *rune))
-	fn(2, nil)
-}
-
-func usedAsIfaceAssert(f FooType, i *rune) {
-	DoWork()
-	println(f)
-}
-
 func GlobArgUse() {
 	globalParam(usedAsGlobalArg)
-	paramIfaceNothing(usedAsIfaceNothing)
-	paramIfaceAssert(usedAsIfaceAssert)
 }
 
 type barIface interface {
@@ -168,4 +150,16 @@ func UsedAsGlobalParam(someBool bool) {
 		}
 	}
 	mux.HandleFunc("/closureVar", closure)
+}
+
+type FuncInterfaceField struct {
+	Func interface{}
+}
+
+var usedAsGlobalInterfaceField = FuncInterfaceField {
+	Func: func(i int, bs []byte) {
+		if i == 0 {
+			DoWork()
+		}
+	},
 }

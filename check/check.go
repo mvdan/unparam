@@ -246,10 +246,6 @@ func (c *Checker) Check() ([]Issue, error) {
 						}
 					}
 				case *ssa.FieldAddr:
-					ftype := instr.Type().(*types.Pointer).Elem()
-					if _, ok := ftype.(*types.Signature); !ok {
-						continue
-					}
 					for _, ref := range *instr.Referrers() {
 						store, ok := ref.(*ssa.Store)
 						if !ok || store.Addr != instr {
@@ -309,7 +305,11 @@ func findFunction(value ssa.Value) *ssa.Function {
 	case *ssa.Function:
 		return value
 	case *ssa.MakeClosure:
+		// closure of a func
 		return value.Fn.(*ssa.Function)
+	case *ssa.MakeInterface:
+		// wrapping a func as an interface
+		return findFunction(value.X)
 	}
 	return nil
 }

@@ -238,21 +238,26 @@ func (c *Checker) Check() ([]Issue, error) {
 	for fn := range allFuncs {
 		for _, b := range fn.Blocks {
 			for _, instr := range b.Instrs {
-				faddr, ok := instr.(*ssa.FieldAddr)
-				if !ok {
-					continue
-				}
-				ftype := faddr.Type().(*types.Pointer).Elem()
-				if _, ok := ftype.(*types.Signature); !ok {
-					continue
-				}
-				for _, ref := range *faddr.Referrers() {
-					store, ok := ref.(*ssa.Store)
-					if !ok || store.Addr != faddr {
+				switch instr := instr.(type) {
+				case *ssa.Call:
+					for _, arg := range instr.Call.Args {
+						if fn := findFunction(arg); fn != nil {
+							c.funcUsedAs[fn] = "param"
+						}
+					}
+				case *ssa.FieldAddr:
+					ftype := instr.Type().(*types.Pointer).Elem()
+					if _, ok := ftype.(*types.Signature); !ok {
 						continue
 					}
-					if fn, _ := store.Val.(*ssa.Function); fn != nil {
-						c.funcUsedAs[fn] = "field"
+					for _, ref := range *instr.Referrers() {
+						store, ok := ref.(*ssa.Store)
+						if !ok || store.Addr != instr {
+							continue
+						}
+						if fn := findFunction(store.Val); fn != nil {
+							c.funcUsedAs[fn] = "field"
+						}
 					}
 				}
 			}
@@ -296,6 +301,17 @@ func (c *Checker) Check() ([]Issue, error) {
 		return p1.Filename < p2.Filename
 	})
 	return c.issues, nil
+}
+
+// findFunction returns the function that is behind a value, if any.
+func findFunction(value ssa.Value) *ssa.Function {
+	switch value := value.(type) {
+	case *ssa.Function:
+		return value
+	case *ssa.MakeClosure:
+		return value.Fn.(*ssa.Function)
+	}
+	return nil
 }
 
 // addIssue records a newly found unused parameter.

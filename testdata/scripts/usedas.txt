@@ -153,3 +153,19 @@ var usedAsGlobalField = http.Client{
                 return nil
         },
 }
+
+var mux = http.NewServeMux()
+
+func UsedAsGlobalParam(someBool bool) {
+	mux.HandleFunc("/inline", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET" {
+			println(r.Host)
+		}
+	})
+	closure := func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "POST" && someBool {
+			println(r.Host)
+		}
+	}
+	mux.HandleFunc("/closureVar", closure)
+}

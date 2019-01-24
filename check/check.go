@@ -249,6 +249,11 @@ func (c *Checker) Check() ([]Issue, error) {
 						// x.someField = fn
 						c.funcUsedAs[fn] = "field"
 					}
+				case *ssa.MakeInterface:
+					if fn := findFunction(instr.X); fn != nil {
+						// emptyIface = fn
+						c.funcUsedAs[fn] = "interface"
+					}
 				case *ssa.ChangeType:
 					if fn := findFunction(instr.X); fn != nil {
 						// someType(fn)
@@ -316,9 +321,6 @@ func findFunction(value ssa.Value) *ssa.Function {
 	case *ssa.MakeClosure:
 		// closure of a func
 		return value.Fn.(*ssa.Function)
-	case *ssa.MakeInterface:
-		// wrapping a func as an interface
-		return findFunction(value.X)
 	}
 	return nil
 }

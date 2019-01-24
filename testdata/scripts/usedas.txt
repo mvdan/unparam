@@ -170,3 +170,11 @@ var convertedToType = SomeFuncType(func(a, b string) string {
 	DoWork()
 	return a
 })
+
+var usedAsGlobalInterfaceMapValue = map[string]interface{}{
+	"someFunc": func(i int, s string) {
+		if i == 0 {
+			DoWork()
+		}
+	},
+}

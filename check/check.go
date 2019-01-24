@@ -71,6 +71,8 @@ type Checker struct {
 	// to the declaration, as that could be either a FuncDecl or FuncLit.
 	funcBodyByPos map[token.Pos]*ast.BlockStmt
 
+	typesImplementing map[*types.Named]bool
+
 	// Funcs used as a struct field or a func call argument. These are very
 	// often signatures which cannot be changed.
 	funcUsedAs map[*ssa.Function]string
@@ -180,6 +182,8 @@ func (c *Checker) Check() ([]Issue, error) {
 	c.cachedDeclCounts = make(map[string]map[string]int)
 	c.callByPos = make(map[token.Pos]*ast.CallExpr)
 	c.funcBodyByPos = make(map[token.Pos]*ast.BlockStmt)
+	c.typesImplementing = make(map[*types.Named]bool)
+
 	wantPkg := make(map[*types.Package]*packages.Package)
 	genFiles := make(map[string]bool)
 	for _, pkg := range c.pkgs {
@@ -191,6 +195,21 @@ func (c *Checker) Check() ([]Issue, error) {
 			}
 			ast.Inspect(f, func(node ast.Node) bool {
 				switch node := node.(type) {
+				case *ast.ValueSpec:
+					if len(node.Values) == 0 || node.Type == nil ||
+						len(node.Names) != 1 || node.Names[0].Name != "_" {
+						break
+					}
+					_, ok := pkg.TypesInfo.TypeOf(node.Type).Underlying().(*types.Interface)
+					if !ok {
+						break
+					}
+					valTyp := pkg.TypesInfo.Types[node.Values[0]].Type
+					named := findNamed(valTyp)
+					if named == nil {
+						break
+					}
+					c.typesImplementing[named] = true
 				case *ast.CallExpr:
 					c.callByPos[node.Lparen] = node
 				// ssa.Function.Pos returns the declaring
@@ -279,6 +298,16 @@ func (c *Checker) Check() ([]Issue, error) {
 	return c.issues, nil
 }
 
+func findNamed(typ types.Type) *types.Named {
+	switch typ := typ.(type) {
+	case *types.Pointer:
+		return findNamed(typ.Elem())
+	case *types.Named:
+		return typ
+	}
+	return nil
+}
+
 // findFunction returns the function that is behind a value, if any.
 func findFunction(value ssa.Value) *ssa.Function {
 	switch value := value.(type) {
@@ -329,6 +358,13 @@ func (c *Checker) checkFunc(fn *ssa.Function, pkg *packages.Package) {
 	if usedAs := c.funcUsedAs[fn]; usedAs != "" {
 		c.debug("  skip - func is used as a %s\n", usedAs)
 		return
+	}
+	if recv := fn.Signature.Recv(); recv != nil {
+		named := findNamed(recv.Type())
+		if c.typesImplementing[named] {
+			c.debug("  skip - receiver must implement an interface\n")
+			return
+		}
 	}
 	if c.multipleImpls(pkg, fn) {
 		c.debug("  skip - multiple implementations via build tags\n")
@@ -753,16 +789,8 @@ func (c *Checker) multipleImpls(pkg *packages.Package, fn *ssa.Function) bool {
 	path := c.prog.Fset.Position(fn.Pos()).Filename
 	count := c.declCounts(filepath.Dir(path), pkg.Types.Name())
 	name := fn.Name()
-	if fn.Signature.Recv() != nil {
-		tp := fn.Params[0].Type()
-		for {
-			ptr, ok := tp.(*types.Pointer)
-			if !ok {
-				break
-			}
-			tp = ptr.Elem()
-		}
-		named := tp.(*types.Named)
+	if recv := fn.Signature.Recv(); recv != nil {
+		named := findNamed(recv.Type())
 		name = named.Obj().Name() + "." + name
 	}
 	return count[name] > 1

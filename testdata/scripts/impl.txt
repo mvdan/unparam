@@ -38,3 +38,22 @@ func (f FooMayImpl) foo(w http.ResponseWriter, code int) error {
 func FooMayUse(f FooIface) {
 	f.foo(nil, 0)
 }
+
+type EnsuredIface interface {
+	implMethod(a, b string) string
+}
+
+var _ EnsuredIface = (*EnsuredImpl)(nil)
+
+type EnsuredImpl struct{}
+
+func (e *EnsuredImpl) implMethod(a, b string) string {
+	DoWork()
+	return a + "bar"
+}
+
+func (e *EnsuredImpl) otherMethod(a, b uint) uint {
+	// TODO: this one should give a warning
+	DoWork()
+	return a + 3
+}

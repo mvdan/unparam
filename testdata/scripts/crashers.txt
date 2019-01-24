@@ -17,3 +17,5 @@ func oneUnused(a, b int) int {
 type RecursiveIface interface {
 	Foo(RecursiveIface)
 }
+
+var _ = 3

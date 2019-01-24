@@ -516,6 +516,12 @@ func (c *Checker) alwaysReceivedConst(in []*callgraph.Edge, par *ssa.Parameter, 
 	seenOrig := ""
 	for _, edge := range in {
 		call := edge.Site.Common()
+		if pos >= len(call.Args) {
+			// TODO: investigate? Weird crash in
+			// internal/x/net/http2/hpack/hpack_test.go, where we
+			// roughly do: "at := d.mustAt; at(3)".
+			return ""
+		}
 		cnst := constValue(call.Args[pos])
 		if cnst == nil {
 			return "" // not a constant

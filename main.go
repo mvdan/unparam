@@ -14,7 +14,7 @@ import (
 var (
 	flagSet = flag.NewFlagSet("unparam", flag.ContinueOnError)
 
-	tests    = flagSet.Bool("tests", true, "include tests")
+	tests    = flagSet.Bool("tests", false, "load tests too")
 	exported = flagSet.Bool("exported", false, "inspect exported functions")
 	debug    = flagSet.Bool("debug", false, "debug prints")
 )

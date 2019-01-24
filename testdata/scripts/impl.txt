@@ -6,22 +6,31 @@ cmp stdout stdout.golden
 -- go.mod --
 module testdata.tld/foo
 -- stdout.golden --
+foo.go:7:19: oneUnused - b is unused
 -- foo.go --
 package foo
 
 import "net/http"
 
+var DoWork func()
+
+func oneUnused(a, b int) int {
+        return a + 123
+}
+
 func Handler(w http.ResponseWriter, r *http.Request) {
+	DoWork()
 	w.Write([]byte("hi"))
 }
 
 type FooIface interface {
-	foo(w http.ResponseWriter, code FooType) error
+	foo(w http.ResponseWriter, code int) error
 }
 
 type FooMayImpl struct{}
 
-func (f FooMayImpl) foo(w http.ResponseWriter, code FooType) error {
+func (f FooMayImpl) foo(w http.ResponseWriter, code int) error {
+	DoWork()
 	w.Write([]byte("hi"))
 	return nil
 }

@@ -6,10 +6,12 @@ cmp stdout stdout.golden
 -- go.mod --
 module testdata.tld/foo
 -- stdout.golden --
-foo.go:53:22: UsedAsArg$4 - u is unused
-foo.go:71:36: usedAsIfaceNothing - i is unused
+foo.go:55:22: UsedAsArg$4 - u is unused
+foo.go:73:36: usedAsIfaceNothing - i is unused
 -- foo.go --
 package foo
+
+import "net/http"
 
 type FooType int
 
@@ -141,4 +143,13 @@ func methodUsedAsArg() {
 	var f FooType
 	foo(f.methodPassedAsParam)
 	foo((FooType).methodPassedAsParam2)
+}
+
+var usedAsGlobalField = http.Client{
+        CheckRedirect: func(req *http.Request, via []*http.Request) error {
+                if req.Method == "GET" {
+                        println(req.Host)
+                }
+                return nil
+        },
 }

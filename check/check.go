@@ -73,6 +73,10 @@ type Checker struct {
 	// funcBodyByPos maps from a function position to its body. We can't map
 	// to the declaration, as that could be either a FuncDecl or FuncLit.
 	funcBodyByPos map[token.Pos]*ast.BlockStmt
+
+	// Funcs used as a struct field or a func call argument. These are very
+	// often signatures which cannot be changed.
+	funcUsedAs map[*ssa.Function]string
 }
 
 var errorType = types.Universe.Lookup("error").Type()
@@ -228,7 +232,34 @@ func (c *Checker) Check() ([]Issue, error) {
 	}
 	c.graph.DeleteSyntheticNodes()
 
-	for fn := range ssautil.AllFunctions(c.prog) {
+	allFuncs := ssautil.AllFunctions(c.prog)
+
+	c.funcUsedAs = make(map[*ssa.Function]string)
+	for fn := range allFuncs {
+		for _, b := range fn.Blocks {
+			for _, instr := range b.Instrs {
+				faddr, ok := instr.(*ssa.FieldAddr)
+				if !ok {
+					continue
+				}
+				ftype := faddr.Type().(*types.Pointer).Elem()
+				if _, ok := ftype.(*types.Signature); !ok {
+					continue
+				}
+				for _, ref := range *faddr.Referrers() {
+					store, ok := ref.(*ssa.Store)
+					if !ok || store.Addr != faddr {
+						continue
+					}
+					if fn, _ := store.Val.(*ssa.Function); fn != nil {
+						c.funcUsedAs[fn] = "field"
+					}
+				}
+			}
+		}
+	}
+
+	for fn := range allFuncs {
 		switch {
 		case fn.Pkg == nil: // builtin?
 			continue
@@ -297,6 +328,10 @@ func (c *Checker) checkFunc(fn *ssa.Function, pkg *packages.Package) {
 	}
 	if requiredViaCall(fn, inboundCalls) {
 		c.debug("  skip - type is required via call\n")
+		return
+	}
+	if usedAs := c.funcUsedAs[fn]; usedAs != "" {
+		c.debug("  skip - func is used as a %s\n", usedAs)
 		return
 	}
 	if c.multipleImpls(pkg, fn) {

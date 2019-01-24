@@ -17,8 +17,6 @@ import (
 var (
 	flagSet = flag.NewFlagSet("unparam", flag.ContinueOnError)
 
-	algo = flagSet.String("algo", "cha", `call graph construction algorithm (cha, rta).
-in general, use cha for libraries, and rta for programs with main packages.`)
 	tests    = flagSet.Bool("tests", true, "include tests")
 	exported = flagSet.Bool("exported", false, "inspect exported functions")
 	debug    = flagSet.Bool("debug", false, "debug prints")
@@ -44,7 +42,7 @@ func main1() int {
 		}
 		return 1
 	}
-	warns, err := check.UnusedParams(*tests, *algo, *exported, *debug, flagSet.Args()...)
+	warns, err := check.UnusedParams(*tests, *exported, *debug, flagSet.Args()...)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1

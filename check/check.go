@@ -23,7 +23,6 @@ import (
 
 	"golang.org/x/tools/go/callgraph"
 	"golang.org/x/tools/go/callgraph/cha"
-	"golang.org/x/tools/go/callgraph/rta"
 	"golang.org/x/tools/go/packages"
 	"golang.org/x/tools/go/ssa"
 	"golang.org/x/tools/go/ssa/ssautil"
@@ -31,7 +30,7 @@ import (
 
 // UnusedParams returns a list of human-readable issues that point out unused
 // function parameters.
-func UnusedParams(tests bool, algo string, exported, debug bool, args ...string) ([]string, error) {
+func UnusedParams(tests bool, exported, debug bool, args ...string) ([]string, error) {
 	wd, err := os.Getwd()
 	if err != nil {
 		return nil, err
@@ -39,7 +38,6 @@ func UnusedParams(tests bool, algo string, exported, debug bool, args ...string)
 	c := &Checker{
 		wd:       wd,
 		tests:    tests,
-		algo:     algo,
 		exported: exported,
 	}
 	if debug {
@@ -59,7 +57,6 @@ type Checker struct {
 	wd string
 
 	tests    bool
-	algo     string
 	exported bool
 	debugLog io.Writer
 
@@ -143,11 +140,6 @@ func (c *Checker) ProgramSSA(prog *ssa.Program) {
 	c.prog = prog
 }
 
-// CallgraphAlgorithm supplies Checker with the call graph construction algorithm.
-func (c *Checker) CallgraphAlgorithm(algo string) {
-	c.algo = algo
-}
-
 // CheckExportedFuncs sets whether to inspect exported functions
 func (c *Checker) CheckExportedFuncs(exported bool) {
 	c.exported = exported
@@ -213,23 +205,7 @@ func (c *Checker) Check() ([]Issue, error) {
 			})
 		}
 	}
-	switch c.algo {
-	case "cha":
-		c.graph = cha.CallGraph(c.prog)
-	case "rta":
-		mains, err := mainPackages(c.prog, wantPkg)
-		if err != nil {
-			return nil, err
-		}
-		var roots []*ssa.Function
-		for _, main := range mains {
-			roots = append(roots, main.Func("init"), main.Func("main"))
-		}
-		result := rta.Analyze(roots, true)
-		c.graph = result.CallGraph
-	default:
-		return nil, fmt.Errorf("unknown call graph construction algorithm: %q", c.algo)
-	}
+	c.graph = cha.CallGraph(c.prog)
 	c.graph.DeleteSyntheticNodes()
 
 	allFuncs := ssautil.AllFunctions(c.prog)
@@ -459,21 +435,6 @@ resLoop:
 		}
 		c.addIssue(fn, par.Pos(), "%s %s", par.Name(), reason)
 	}
-}
-
-// mainPackages returns the subset of main packages within pkgSet.
-func mainPackages(prog *ssa.Program, pkgSet map[*types.Package]*packages.Package) ([]*ssa.Package, error) {
-	mains := make([]*ssa.Package, 0, len(pkgSet))
-	for tpkg := range pkgSet {
-		pkg := prog.Package(tpkg)
-		if tpkg.Name() == "main" && pkg.Func("main") != nil {
-			mains = append(mains, pkg)
-		}
-	}
-	if len(mains) == 0 {
-		return nil, fmt.Errorf("no main packages")
-	}
-	return mains, nil
 }
 
 // calledInReturn reports whether any of a function's inbound calls happened

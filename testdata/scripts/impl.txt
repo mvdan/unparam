@@ -7,6 +7,7 @@ cmp stdout stdout.golden
 module testdata.tld/foo
 -- stdout.golden --
 foo.go:7:19: oneUnused - b is unused
+foo.go:45:38: (*EnsuredImpl).otherMethod - b is unused
 main/main.go:5:19: oneUnused - b is unused
 -- foo.go --
 package foo
@@ -54,7 +55,6 @@ func (e *EnsuredImpl) implMethod(a, b string) string {
 }
 
 func (e *EnsuredImpl) otherMethod(a, b uint) uint {
-	// TODO: this one should give a warning
 	DoWork()
 	return a + 3
 }
@@ -80,6 +80,9 @@ func (f flagFunc) Set(s string) error {
 func (f flagFunc) String() string { return "" }
 
 func init() {
-	someFunc := func(s string) { DoWork() }
+	someFunc := func(s string) {
+		DoWork()
+		println(s)
+	}
 	flag.Var(flagFunc(someFunc), "someflag", "")
 }

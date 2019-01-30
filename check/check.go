@@ -71,7 +71,9 @@ type Checker struct {
 	// to the declaration, as that could be either a FuncDecl or FuncLit.
 	funcBodyByPos map[token.Pos]*ast.BlockStmt
 
-	typesImplementing map[*types.Named]bool
+	// typesImplementing records the method names that each named type needs
+	// to typecheck properly, as they're required to implement interfaces.
+	typesImplementing map[*types.Named][]string
 
 	// Funcs used as a struct field or a func call argument. These are very
 	// often signatures which cannot be changed.
@@ -182,7 +184,7 @@ func (c *Checker) Check() ([]Issue, error) {
 	c.cachedDeclCounts = make(map[string]map[string]int)
 	c.callByPos = make(map[token.Pos]*ast.CallExpr)
 	c.funcBodyByPos = make(map[token.Pos]*ast.BlockStmt)
-	c.typesImplementing = make(map[*types.Named]bool)
+	c.typesImplementing = make(map[*types.Named][]string)
 
 	wantPkg := make(map[*types.Package]*packages.Package)
 	genFiles := make(map[string]bool)
@@ -200,16 +202,13 @@ func (c *Checker) Check() ([]Issue, error) {
 						len(node.Names) != 1 || node.Names[0].Name != "_" {
 						break
 					}
-					_, ok := pkg.TypesInfo.TypeOf(node.Type).Underlying().(*types.Interface)
+					iface, ok := pkg.TypesInfo.TypeOf(node.Type).Underlying().(*types.Interface)
 					if !ok {
 						break
 					}
+					// var _ someIface = named
 					valTyp := pkg.TypesInfo.Types[node.Values[0]].Type
-					named := findNamed(valTyp)
-					if named == nil {
-						break
-					}
-					c.typesImplementing[named] = true
+					c.addImplementing(findNamed(valTyp), iface)
 				case *ast.CallExpr:
 					c.callByPos[node.Lparen] = node
 				// ssa.Function.Pos returns the declaring
@@ -250,6 +249,10 @@ func (c *Checker) Check() ([]Issue, error) {
 						c.funcUsedAs[fn] = "field"
 					}
 				case *ssa.MakeInterface:
+					// someIface(named)
+					iface := instr.Type().Underlying().(*types.Interface)
+					c.addImplementing(findNamed(instr.X.Type()), iface)
+
 					if fn := findFunction(instr.X); fn != nil {
 						// emptyIface = fn
 						c.funcUsedAs[fn] = "interface"
@@ -301,6 +304,29 @@ func (c *Checker) Check() ([]Issue, error) {
 		return p1.Filename < p2.Filename
 	})
 	return c.issues, nil
+}
+
+func stringsContains(list []string, elem string) bool {
+	for _, e := range list {
+		if e == elem {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *Checker) addImplementing(named *types.Named, iface *types.Interface) {
+	if named == nil || iface == nil {
+		return
+	}
+	list := c.typesImplementing[named]
+	for i := 0; i < iface.NumMethods(); i++ {
+		name := iface.Method(i).Name()
+		if !stringsContains(list, name) {
+			list = append(list, name)
+		}
+	}
+	c.typesImplementing[named] = list
 }
 
 func findNamed(typ types.Type) *types.Named {
@@ -363,8 +389,8 @@ func (c *Checker) checkFunc(fn *ssa.Function, pkg *packages.Package) {
 	}
 	if recv := fn.Signature.Recv(); recv != nil {
 		named := findNamed(recv.Type())
-		if c.typesImplementing[named] {
-			c.debug("  skip - receiver must implement an interface\n")
+		if stringsContains(c.typesImplementing[named], fn.Name()) {
+			c.debug("  skip - method required to implement an interface\n")
 			return
 		}
 	}

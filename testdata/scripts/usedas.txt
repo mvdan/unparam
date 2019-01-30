@@ -118,7 +118,7 @@ func (f FooType) methodPassedAsParam2() bool {
 	return true
 }
 
-func methodUsedAsArg() {
+func MethodUsedAsArg() {
 	foo := func(f func(f FooType) bool) {
 		f(2)
 	}

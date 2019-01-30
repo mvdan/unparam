@@ -1,12 +1,13 @@
 env HOME=$WORK/home
 
-! unparam .
+! unparam ./...
 cmp stdout stdout.golden
 
 -- go.mod --
 module testdata.tld/foo
 -- stdout.golden --
 foo.go:7:19: oneUnused - b is unused
+main/main.go:5:19: oneUnused - b is unused
 -- foo.go --
 package foo
 
@@ -15,7 +16,7 @@ import "net/http"
 var DoWork func()
 
 func oneUnused(a, b int) int {
-        return a + 123
+	return a + 123
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
@@ -56,4 +57,29 @@ func (e *EnsuredImpl) otherMethod(a, b uint) uint {
 	// TODO: this one should give a warning
 	DoWork()
 	return a + 3
+}
+-- main/main.go --
+package main
+
+import "flag"
+
+func oneUnused(a, b int) int {
+	return a + 123
+}
+
+var DoWork func()
+
+type flagFunc func(string)
+
+func (f flagFunc) Set(s string) error {
+	DoWork()
+	f(s)
+	return nil
+}
+
+func (f flagFunc) String() string { return "" }
+
+func init() {
+	someFunc := func(s string) { DoWork() }
+	flag.Var(flagFunc(someFunc), "someflag", "")
 }

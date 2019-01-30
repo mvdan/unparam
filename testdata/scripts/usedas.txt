@@ -17,7 +17,7 @@ type FooType int
 var DoWork func()
 
 func oneUnused(a, b int) int {
-        return a + 123
+	return a + 123
 }
 
 func funcAsParam(fn func(FooType) string) { fn(0) }
@@ -127,13 +127,25 @@ func MethodUsedAsArg() {
 	foo((FooType).methodPassedAsParam2)
 }
 
-var usedAsGlobalField = http.Client{
+var funcUsedAsGlobalField = http.Client{
         CheckRedirect: func(req *http.Request, via []*http.Request) error {
                 if req.Method == "GET" {
                         println(req.Host)
                 }
                 return nil
         },
+}
+
+func (f FooType) checkRedirect(req *http.Request, via []*http.Request) error {
+	if req.Method == "GET" {
+		println(req.Host)
+	}
+	return nil
+}
+
+func MethodUsedAsParamField(client *http.Client) {
+	var f FooType
+	client.CheckRedirect = f.checkRedirect
 }
 
 var mux = http.NewServeMux()

@@ -343,10 +343,26 @@ func findNamed(typ types.Type) *types.Named {
 func findFunction(value ssa.Value) *ssa.Function {
 	switch value := value.(type) {
 	case *ssa.Function:
+		name := value.Name()
+		if strings.HasSuffix(name, "$thunk") || strings.HasSuffix(name, "$bound") {
+			// Method wrapper funcs contain a single block, which
+			// calls the function being wrapped, and returns. We
+			// want the function being wrapped.
+			for _, instr := range value.Blocks[0].Instrs {
+				call, ok := instr.(*ssa.Call)
+				if !ok {
+					continue
+				}
+				if callee := call.Call.StaticCallee(); callee != nil {
+					return callee
+				}
+			}
+			return nil // no static callee?
+		}
 		return value
 	case *ssa.MakeClosure:
 		// closure of a func
-		return value.Fn.(*ssa.Function)
+		return findFunction(value.Fn)
 	}
 	return nil
 }

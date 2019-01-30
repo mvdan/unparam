@@ -128,12 +128,12 @@ func MethodUsedAsArg() {
 }
 
 var funcUsedAsGlobalField = http.Client{
-        CheckRedirect: func(req *http.Request, via []*http.Request) error {
-                if req.Method == "GET" {
-                        println(req.Host)
-                }
-                return nil
-        },
+	CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		if req.Method == "GET" {
+			println(req.Host)
+		}
+		return nil
+	},
 }
 
 func (f FooType) checkRedirect(req *http.Request, via []*http.Request) error {

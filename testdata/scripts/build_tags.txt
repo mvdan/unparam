@@ -20,27 +20,27 @@ type FooType int
 package foo
 
 func oneUnusedMain(a, b int) int {
-        return a + 2
+	return a + 2
 }
 
 func multipleImpls(f int) int32 {
-        DoWork()
-        return 3
+	DoWork()
+	return 3
 }
 
 func (f FooType) multImplsMethod(f2 int) uint32 {
-        DoWork()
-        return 3
+	DoWork()
+	return 3
 }
 
 func (f *FooType) multImplsMethod2(f3 int) int64 {
-        DoWork()
-        return 3
+	DoWork()
+	return 3
 }
 
 func multImplsMethod(f int) uint64 {
-        DoWork()
-        return 3
+	DoWork()
+	return 3
 }
 -- foo_other.go --
 //+build other
@@ -48,16 +48,16 @@ func multImplsMethod(f int) uint64 {
 package foo
 
 func multipleImpls(f int) int32 {
-        DoWork()
-        return int32(f)
+	DoWork()
+	return int32(f)
 }
 
 func (f FooType) multImplsMethod(f2 int) uint32 {
-        DoWork()
-        return uint32(f)
+	DoWork()
+	return uint32(f)
 }
 
 func (f *FooType) multImplsMethod2(f3 int) int64 {
-        DoWork()
-        return int64(*f)
+	DoWork()
+	return int64(*f)
 }

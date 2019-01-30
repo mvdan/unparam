@@ -11,7 +11,7 @@ foo.go:3:19: oneUnused - b is unused
 package foo
 
 func oneUnused(a, b int) int {
-        return a + 123
+	return a + 123
 }
 
 type RecursiveIface interface {

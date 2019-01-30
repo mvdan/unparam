@@ -14,9 +14,9 @@ foo.go:49:31: nonConstImpl - s is unused
 package foo
 
 import (
-        "errors"
+	"errors"
 	"log"
-        "net/http"
+	"net/http"
 )
 
 func dummyImpl(f int) {}
@@ -24,10 +24,10 @@ func dummyImpl(f int) {}
 func panicImpl(f int) { panic("dummy") }
 
 func nonPanicImpl(w http.ResponseWriter, f int) {
-        for i := 0; i < 10; i++ {
-                w.Write([]byte("foo"))
-        }
-        panic("default")
+	for i := 0; i < 10; i++ {
+		w.Write([]byte("foo"))
+	}
+	panic("default")
 }
 
 func throw(v ...interface{}) {}
@@ -35,14 +35,14 @@ func throw(v ...interface{}) {}
 func throwImpl(f int) { throw("dummy") }
 
 func endlessLoop(w http.ResponseWriter) {
-        for {
-                w.Write([]byte("foo"))
-        }
+	for {
+		w.Write([]byte("foo"))
+	}
 }
 
 func nonPanicImpl2(w http.ResponseWriter, f int) {
-        endlessLoop(w)
-        panic("unreachable")
+	endlessLoop(w)
+	panic("unreachable")
 }
 
 func zeroImpl(f int) (int, string, []byte) { return 0, "", nil }
@@ -64,9 +64,9 @@ func nonConstImpl(f fooError, s string) error { return iface.(error) }
 func logImpl(f int) { log.Print("not implemented") }
 
 func oneOverwritten(a int, i uint8) (int, uint8) {
-        i = 3 // TODO: skip this as a real use, without breaking "_ = i"
-        a += 1
-        return a, i
+	i = 3 // TODO: skip this as a real use, without breaking "_ = i"
+	a += 1
+	return a, i
 }
 
 type fooStruct struct{
@@ -74,23 +74,23 @@ type fooStruct struct{
 }
 
 func zeroStructImpl(f fooStruct) fooStruct {
-        return fooStruct{}
+	return fooStruct{}
 }
 
 func zeroMapImpl(f int) map[int]int {
-        return map[int]int{}
+	return map[int]int{}
 }
 
 func zeroMapMakeImpl(f int) map[int]int {
-        return make(map[int]int, 0)
+	return make(map[int]int, 0)
 }
 
 func customError(msg string) error { return errors.New("custom: " + msg) }
 func customErrorImpl(f fooError) (int8, error) {
-        return -1, customError("x: bar")
+	return -1, customError("x: bar")
 }
 
 func customErrorf(msg string) error { return errors.New("custom: " + msg) }
 func customErrorfImpl(f fooError) (int8, error) {
-        return -1, customErrorf("x: bar")
+	return -1, customErrorf("x: bar")
 }

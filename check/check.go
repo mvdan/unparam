@@ -229,9 +229,16 @@ func (c *Checker) Check() ([]Issue, error) {
 	allFuncs := ssautil.AllFunctions(c.prog)
 
 	c.funcUsedAs = make(map[*ssa.Function]string)
-	for fn := range allFuncs {
-		for _, b := range fn.Blocks {
+	for curFunc := range allFuncs {
+		for _, b := range curFunc.Blocks {
 			for _, instr := range b.Instrs {
+				if instr, ok := instr.(ssa.CallInstruction); ok {
+					fn := receivesExtractedArgs(instr.Common())
+					if fn != nil {
+						// fn(someFunc())
+						c.funcUsedAs[fn] = "call wrapper"
+					}
+				}
 				switch instr := instr.(type) {
 				case *ssa.Call:
 					for _, arg := range instr.Call.Args {
@@ -418,10 +425,6 @@ func (c *Checker) checkFunc(fn *ssa.Function, pkg *packages.Package) {
 	var inboundCalls []*callgraph.Edge
 	if node := c.graph.Nodes[fn]; node != nil {
 		inboundCalls = node.In
-	}
-	if requiredViaCall(fn, inboundCalls) {
-		c.debug("  skip - type is required via call\n")
-		return
 	}
 	if usedAs := c.funcUsedAs[fn]; usedAs != "" {
 		c.debug("  skip - func is used as a %s\n", usedAs)
@@ -864,29 +867,32 @@ func (c *Checker) multipleImpls(pkg *packages.Package, fn *ssa.Function) bool {
 	return count[name] > 1
 }
 
-// receivesExtractedArgs reports whether a function call got all of its
-// arguments via another function call. That is, if a call to function "foo" was
-// of the form "foo(bar())".
-func receivesExtractedArgs(sign *types.Signature, call *ssa.Call) bool {
-	if call == nil {
-		return false
+// receivesExtractedArgs returns the statically called function, if its multiple
+// arguments were all received via another function call. That is, if a call to
+// function "foo" was of the form "foo(bar())". This often means that the
+// parameters in "foo" are difficult to remove, even if unused.
+func receivesExtractedArgs(call *ssa.CallCommon) *ssa.Function {
+	callee := findFunction(call.Value)
+	if callee == nil {
+		return nil
 	}
-	if sign.Params().Len() < 2 {
-		return false // extracting into one param is ok
+	if callee.Signature.Params().Len() < 2 {
+		return nil // extracting into one param is ok
 	}
-	args := call.Operands(nil)
-	for i, arg := range args {
-		if i == 0 {
-			continue // *ssa.Function, func itself
+	for i, arg := range call.Args {
+		if i == 0 && callee.Signature.Recv() != nil {
+			// receiver argument
+			continue
 		}
-		if i == 1 && sign.Recv() != nil {
-			continue // method receiver
+		ext, ok := arg.(*ssa.Extract)
+		if !ok {
+			return nil
 		}
-		if _, ok := (*arg).(*ssa.Extract); !ok {
-			return false
+		if _, ok := ext.Tuple.(*ssa.Call); !ok {
+			return nil
 		}
 	}
-	return true
+	return callee
 }
 
 // paramDesc returns a string describing a parameter variable. If the parameter
@@ -898,19 +904,4 @@ func paramDesc(i int, v *types.Var) string {
 		return name
 	}
 	return fmt.Sprintf("%d (%s)", i, v.Type().String())
-}
-
-// requiredViaCall reports whether a function has any inbound call that strongly
-// depends on the function's signature. For example, if the function is accessed
-// via a field, or if it gets its arguments from another function call. In these
-// cases, changing the function signature would mean a larger refactor.
-func requiredViaCall(fn *ssa.Function, calls []*callgraph.Edge) bool {
-	for _, edge := range calls {
-		call := edge.Site.Value()
-		if receivesExtractedArgs(fn.Signature, call) {
-			// called via fn(x())
-			return true
-		}
-	}
-	return false
 }

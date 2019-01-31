@@ -7,9 +7,9 @@ cmp stdout stdout.golden
 module testdata.tld/foo
 -- stdout.golden --
 foo.go:21:24: funcResultAsParam - a is unused
-foo.go:26:38: (FooType).methodResultAsParam - a is unused
-foo.go:33:29: funcResultsAsParams - b is unused
-foo.go:51:26: returnResultsOwn - result 0 (testdata.tld/foo.FooType) is never used
+foo.go:25:38: (FooType).methodResultAsParam - a is unused
+foo.go:32:29: funcResultsAsParams - b is unused
+foo.go:58:26: returnResultsOwn - result 0 (testdata.tld/foo.FooType) is never used
 -- foo.go --
 package foo
 
@@ -31,9 +31,8 @@ func (f FooType) methodResultAsParams(a, b FooType) FooType {
 
 func generateResults() (a, b FooType) { return }
 
-func funcResultAsParam(a FooType) FooType {
+func funcResultAsParam(a FooType) {
 	DoWork()
-	return 3
 }
 
 func (f FooType) methodResultAsParam(a FooType) FooType {
@@ -48,14 +47,22 @@ func funcResultsAsParams(a, b FooType) FooType {
 	return a + 1
 }
 
+func funcResultNotAsParams(a, b FooType) FooType {
+	DoWork()
+	return a + 1
+}
+
 func ResultCalls() {
+	a, b := generateResults()
+	Sink = funcResultNotAsParams(a, b)
+
 	var f FooType
 	Sink = funcResultAsParams(1, 2)
 	Sink = funcResultAsParams(generateResults())
 	Sink = f.methodResultAsParams(1, 2)
 	Sink = f.methodResultAsParams(generateResults())
-	Sink = funcResultAsParam(4)
-	Sink = funcResultAsParam(generateResult())
+	go funcResultAsParam(4)
+	go funcResultAsParam(generateResult())
 	Sink = f.methodResultAsParam(4)
 	Sink = f.methodResultAsParam(generateResult())
 	Sink = funcResultsAsParams(generateResult(), generateResult())

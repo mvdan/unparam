@@ -240,13 +240,37 @@ func (c *Checker) Check() ([]Issue, error) {
 							c.funcUsedAs[fn] = "param"
 						}
 					}
+				case *ssa.Phi:
+					for _, val := range instr.Edges {
+						if fn := findFunction(val); fn != nil {
+							// nonConstVar = fn
+							c.funcUsedAs[fn] = "phi"
+						}
+					}
+				case *ssa.Return:
+					for _, val := range instr.Results {
+						if fn := findFunction(val); fn != nil {
+							// return fn
+							c.funcUsedAs[fn] = "result"
+						}
+					}
 				case *ssa.Store:
-					if _, ok := instr.Addr.(*ssa.FieldAddr); !ok {
-						break
+					as := ""
+					switch instr.Addr.(type) {
+					case *ssa.FieldAddr:
+						// x.someField = fn
+						as = "field"
+					case *ssa.IndexAddr:
+						// x[someIndex] = fn
+						as = "element"
+					case *ssa.Global:
+						// someGlobal = fn
+						as = "global"
+					default:
+						continue
 					}
 					if fn := findFunction(instr.Val); fn != nil {
-						// x.someField = fn
-						c.funcUsedAs[fn] = "field"
+						c.funcUsedAs[fn] = as
 					}
 				case *ssa.MakeInterface:
 					// someIface(named)
@@ -886,30 +910,6 @@ func requiredViaCall(fn *ssa.Function, calls []*callgraph.Edge) bool {
 		if receivesExtractedArgs(fn.Signature, call) {
 			// called via fn(x())
 			return true
-		}
-		switch edge.Site.Common().Value.(type) {
-		case *ssa.Parameter:
-			// Func used as parameter; not safe.
-			return true
-		case *ssa.Call:
-			// Called through an interface; not safe.
-			return true
-		case *ssa.TypeAssert:
-			// Called through a type assertion; not safe.
-			return true
-		case *ssa.Const:
-			// Conservative "may implement" edge; not safe.
-			return true
-		case *ssa.UnOp:
-			// TODO: why is this not safe?
-			return true
-		case *ssa.Phi:
-			// We may run this function or another; not safe.
-			return true
-		case *ssa.Function:
-			// Called directly; the call site can easily be adapted.
-		default:
-			// Other instructions are safe or non-interesting.
 		}
 	}
 	return false

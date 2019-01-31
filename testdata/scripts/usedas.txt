@@ -20,21 +20,25 @@ func oneUnused(a, b int) int {
 	return a + 123
 }
 
-func funcAsParam(fn func(FooType) string) { fn(0) }
+func funcUsesAsParam(fn func(FooType) string) { fn(0) }
 
-func passedAsParam(f FooType) string {
+func funcPassedAsParam(f FooType) string {
 	DoWork()
 	return "foo"
 }
 
-func (f FooType) funcAsParam2(fn func(FooType) []byte) { fn(0) }
-
-func passedAsParam2(f FooType) []byte {
+func (_ FooType) methodPassedAsParam(f FooType) string {
 	DoWork()
-	return nil
+	return "bar"
 }
 
-func AnonType() {
+func PassesFuncsAsParams() {
+	funcUsesAsParam(funcPassedAsParam)
+	var f FooType
+	funcUsesAsParam(f.methodPassedAsParam)
+}
+
+func UsedAsSliceElem() {
 	for _, f := range []func(FooType, int32){
 		func(f FooType, i int32) {
 			DoWork()
@@ -84,8 +88,37 @@ func GlobArgUse() {
 	globalParam(usedAsGlobalArg)
 }
 
+var globalFunc func(f FooType, i uint8)
+
+func usedAsGlobal(f FooType, i uint8) {
+	DoWork()
+	println(f)
+}
+
+func UsesAsGlobal() {
+	globalFunc = usedAsGlobal
+}
+
 type barIface interface {
 	bar(FooType, uint16)
+}
+
+func usedAsPhi(f FooType, i int16) {
+	DoWork()
+	println(f)
+}
+
+var Cond bool
+
+func UsesAsPhi() {
+	fn := usedAsPhi
+	if Cond {
+		fn = func(f FooType, i int16) {
+			DoWork()
+			println(f, i)
+		}
+	}
+	fn(FooType(2), 3)
 }
 
 type barType struct{}
@@ -102,7 +135,7 @@ func BarIfaceUse() {
 	b.bar(0, 1)
 }
 
-func (f FooType) methodPassedAsParam(f2 FooType) bool {
+func (f FooType) methodPassedAsFuncLitParam(f2 FooType) bool {
 	if f == 3 {
 		DoWork()
 		return true
@@ -110,7 +143,7 @@ func (f FooType) methodPassedAsParam(f2 FooType) bool {
 	return true
 }
 
-func (f FooType) methodPassedAsParam2() bool {
+func (f FooType) methodPassedAsFuncLitParam2() bool {
 	if f == 4 {
 		DoWork()
 		return true
@@ -118,13 +151,13 @@ func (f FooType) methodPassedAsParam2() bool {
 	return true
 }
 
-func MethodUsedAsArg() {
+func MethodUsedAsFuncLitParam() {
 	foo := func(f func(f FooType) bool) {
 		f(2)
 	}
 	var f FooType
-	foo(f.methodPassedAsParam)
-	foo((FooType).methodPassedAsParam2)
+	foo(f.methodPassedAsFuncLitParam)
+	foo((FooType).methodPassedAsFuncLitParam2)
 }
 
 var funcUsedAsGlobalField = http.Client{
@@ -189,4 +222,10 @@ var usedAsGlobalInterfaceMapValue = map[string]interface{}{
 			DoWork()
 		}
 	},
+}
+
+func FuncLitUsedAsReturn(fixedVal int64) func(int64) (int64, error) {
+        return func(int64) (int64, error) {
+                return fixedVal, nil
+        }
 }

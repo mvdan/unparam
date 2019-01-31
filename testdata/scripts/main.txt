@@ -7,6 +7,7 @@ cmp stdout stdout.golden
 module testdata.tld/foo
 -- stdout.golden --
 main.go:3:19: OneUnused - b is unused
+main.go:10:29: ImplementsButUnused - b is unused
 -- main.go --
 package main
 
@@ -15,14 +16,14 @@ func OneUnused(a, b uint) uint {
 	return a
 }
 
-type fnType func(a, b int) int
+type FnType func(a, b int) int
 
-func mightImplement(a, b int) int {
+func ImplementsButUnused(a, b int) int {
 	a *= 4
 	return a
 }
 
 func main() {
-	var f fnType
+	var f FnType
 	f(2, 3)
 }

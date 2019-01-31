@@ -7,7 +7,7 @@ cmp stdout stdout.golden
 module testdata.tld/foo
 -- stdout.golden --
 foo.go:7:19: oneUnused - b is unused
-foo.go:45:38: (*EnsuredImpl).otherMethod - b is unused
+foo.go:49:38: (*EnsuredImpl).otherMethod - b is unused
 main/main.go:5:19: oneUnused - b is unused
 -- foo.go --
 package foo
@@ -31,7 +31,7 @@ type FooIface interface {
 
 type FooMayImpl struct{}
 
-func (f FooMayImpl) foo(w http.ResponseWriter, code int) error {
+func (f *FooMayImpl) foo(w http.ResponseWriter, code int) error {
 	DoWork()
 	w.Write([]byte("hi"))
 	return nil
@@ -39,6 +39,10 @@ func (f FooMayImpl) foo(w http.ResponseWriter, code int) error {
 
 func FooMayUse(f FooIface) {
 	f.foo(nil, 0)
+}
+
+func FooDoesUse(f FooMayImpl) {
+	FooMayUse(&f)
 }
 
 type EnsuredIface interface {

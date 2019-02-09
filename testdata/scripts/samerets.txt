@@ -12,8 +12,8 @@ foo.go:30:37: manyReturnsMultiple - result s is always "foo"
 foo.go:38:30: singleNilError - result 1 (error) is always nil
 foo.go:43:28: manyNilError - result 1 (error) is always nil
 foo.go:74:39: doubleReturnNotForwarded - result 1 (error) is always nil
-foo.go:86:29: neverForwarded - result 1 (error) is always nil
-foo.go:93:50: (FooType).neverForwardedPtrMethod - result 1 (error) is always nil
+foo.go:92:29: neverForwarded - result 1 (error) is always nil
+foo.go:99:50: (FooType).neverForwardedPtrMethod - result 1 (error) is always nil
 -- foo.go --
 package foo
 
@@ -93,11 +93,17 @@ func doubleReturnNotForwarded() (int, error) {
 	return 5, nil
 }
 
-func falseForwardinggDouble() (int, error) {
+func falseForwardingDoubleLen() int {
 	DoWork()
 	n, err := doubleReturnNotForwarded()
-	println(n)
-	return 2, err
+	println(err)
+	return n
+}
+
+func falseForwardingDoubleOrder() (error, int) {
+	DoWork()
+	n, err := doubleReturnNotForwarded()
+	return err, n
 }
 
 func neverForwarded() (int, error) {
@@ -117,4 +123,14 @@ func neverForwarding() {
 	neverForwarded()
 	f := new(FooType)
 	f.neverForwardedPtrMethod()
+}
+
+func forwardingDoubleFuncLits(orig []byte) {
+	rc := func(data []byte) (byte, error) {
+		DoWork()
+		return data[0], nil
+	}
+	_ = func() (byte, error) {
+		return rc(orig)
+	}
 }

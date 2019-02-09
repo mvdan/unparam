@@ -75,9 +75,12 @@ type Checker struct {
 	// to typecheck properly, as they're required to implement interfaces.
 	typesImplementing map[*types.Named][]string
 
-	// Funcs used as a struct field or a func call argument. These are very
-	// often signatures which cannot be changed.
-	funcUsedAs map[*ssa.Function]string
+	// These three maps record whether an entire func's signature cannot be
+	// changed, or only its list of parameters or results.
+
+	signRequiredBy    map[*ssa.Function]string
+	paramsRequiredBy  map[*ssa.Function]string
+	resultsRequiredBy map[*ssa.Function]string
 }
 
 var errorType = types.Universe.Lookup("error").Type()
@@ -228,37 +231,82 @@ func (c *Checker) Check() ([]Issue, error) {
 
 	allFuncs := ssautil.AllFunctions(c.prog)
 
-	c.funcUsedAs = make(map[*ssa.Function]string)
+	// map from *ssa.FreeVar to *ssa.Function, to find function literals
+	// behind closure vars in the simpler scenarios.
+	freeVars := map[*ssa.FreeVar]*ssa.Function{}
 	for curFunc := range allFuncs {
 		for _, b := range curFunc.Blocks {
 			for _, instr := range b.Instrs {
+				instr, ok := instr.(*ssa.MakeClosure)
+				if !ok {
+					continue
+				}
+				fn := instr.Fn.(*ssa.Function)
+				for i, fv := range fn.FreeVars {
+					binding := instr.Bindings[i]
+					alloc, ok := binding.(*ssa.Alloc)
+					if !ok {
+						continue
+					}
+					for _, ref := range *alloc.Referrers() {
+						store, ok := ref.(*ssa.Store)
+						if !ok {
+							continue
+						}
+						if fn, ok := store.Val.(*ssa.Function); ok {
+							freeVars[fv] = fn
+							break
+						}
+					}
+				}
+			}
+		}
+	}
+
+	c.signRequiredBy = make(map[*ssa.Function]string)
+	c.paramsRequiredBy = make(map[*ssa.Function]string)
+	c.resultsRequiredBy = make(map[*ssa.Function]string)
+	for curFunc := range allFuncs {
+		if strings.HasPrefix(curFunc.Synthetic, "wrapper for func") {
+			// Synthetic func wrappers are uninteresting, and can
+			// lead to false negatives.
+			continue
+		}
+		for _, b := range curFunc.Blocks {
+			for _, instr := range b.Instrs {
 				if instr, ok := instr.(ssa.CallInstruction); ok {
-					fn := receivesExtractedArgs(instr.Common())
+					fn := receivesExtractedArgs(freeVars, instr.Common())
 					if fn != nil {
-						// fn(someFunc())
-						c.funcUsedAs[fn] = "call wrapper"
+						// fn(someFunc()) fixes params
+						c.paramsRequiredBy[fn] = "forwarded call"
 					}
 				}
 				switch instr := instr.(type) {
 				case *ssa.Call:
 					for _, arg := range instr.Call.Args {
-						if fn := findFunction(arg); fn != nil {
+						if fn := findFunction(freeVars, arg); fn != nil {
 							// someFunc(fn)
-							c.funcUsedAs[fn] = "param"
+							c.signRequiredBy[fn] = "call"
 						}
 					}
 				case *ssa.Phi:
 					for _, val := range instr.Edges {
-						if fn := findFunction(val); fn != nil {
+						if fn := findFunction(freeVars, val); fn != nil {
 							// nonConstVar = fn
-							c.funcUsedAs[fn] = "phi"
+							c.signRequiredBy[fn] = "phi"
 						}
 					}
 				case *ssa.Return:
 					for _, val := range instr.Results {
-						if fn := findFunction(val); fn != nil {
+						if fn := findFunction(freeVars, val); fn != nil {
 							// return fn
-							c.funcUsedAs[fn] = "result"
+							c.signRequiredBy[fn] = "result"
+						}
+					}
+					if call := callExtract(instr.Results); call != nil {
+						if fn := findFunction(freeVars, call.Call.Value); fn != nil {
+							// return fn()
+							c.resultsRequiredBy[fn] = "return"
 						}
 					}
 				case *ssa.Store:
@@ -276,22 +324,22 @@ func (c *Checker) Check() ([]Issue, error) {
 					default:
 						continue
 					}
-					if fn := findFunction(instr.Val); fn != nil {
-						c.funcUsedAs[fn] = as
+					if fn := findFunction(freeVars, instr.Val); fn != nil {
+						c.signRequiredBy[fn] = as
 					}
 				case *ssa.MakeInterface:
 					// someIface(named)
 					iface := instr.Type().Underlying().(*types.Interface)
 					c.addImplementing(findNamed(instr.X.Type()), iface)
 
-					if fn := findFunction(instr.X); fn != nil {
+					if fn := findFunction(freeVars, instr.X); fn != nil {
 						// emptyIface = fn
-						c.funcUsedAs[fn] = "interface"
+						c.signRequiredBy[fn] = "interface"
 					}
 				case *ssa.ChangeType:
-					if fn := findFunction(instr.X); fn != nil {
+					if fn := findFunction(freeVars, instr.X); fn != nil {
 						// someType(fn)
-						c.funcUsedAs[fn] = "type conversion"
+						c.signRequiredBy[fn] = "type conversion"
 					}
 				}
 			}
@@ -371,7 +419,7 @@ func findNamed(typ types.Type) *types.Named {
 }
 
 // findFunction returns the function that is behind a value, if any.
-func findFunction(value ssa.Value) *ssa.Function {
+func findFunction(freeVars map[*ssa.FreeVar]*ssa.Function, value ssa.Value) *ssa.Function {
 	switch value := value.(type) {
 	case *ssa.Function:
 		name := value.Name()
@@ -393,7 +441,14 @@ func findFunction(value ssa.Value) *ssa.Function {
 		return value
 	case *ssa.MakeClosure:
 		// closure of a func
-		return findFunction(value.Fn)
+		return findFunction(freeVars, value.Fn)
+	case *ssa.UnOp:
+		if value.Op != token.MUL {
+			break
+		}
+		if fv, ok := value.X.(*ssa.FreeVar); ok {
+			return freeVars[fv]
+		}
 	}
 	return nil
 }
@@ -426,8 +481,8 @@ func (c *Checker) checkFunc(fn *ssa.Function, pkg *packages.Package) {
 	if node := c.graph.Nodes[fn]; node != nil {
 		inboundCalls = node.In
 	}
-	if usedAs := c.funcUsedAs[fn]; usedAs != "" {
-		c.debug("  skip - func is used as a %s\n", usedAs)
+	if by := c.signRequiredBy[fn]; by != "" {
+		c.debug("  skip - func signature required by %s\n", by)
 		return
 	}
 	if recv := fn.Signature.Recv(); recv != nil {
@@ -441,12 +496,17 @@ func (c *Checker) checkFunc(fn *ssa.Function, pkg *packages.Package) {
 		c.debug("  skip - multiple implementations via build tags\n")
 		return
 	}
+	paramsBy := c.paramsRequiredBy[fn]
+	resultsBy := c.resultsRequiredBy[fn]
 
 	results := fn.Signature.Results()
 	sameConsts := make([]*ssa.Const, results.Len())
 	numRets := 0
 	allRetsExtracting := true
 	for _, block := range fn.Blocks {
+		if resultsBy != "" {
+			continue // we can't change the returns
+		}
 		last := block.Instrs[len(block.Instrs)-1]
 		ret, ok := last.(*ssa.Return)
 		if !ok {
@@ -475,9 +535,6 @@ func (c *Checker) checkFunc(fn *ssa.Function, pkg *packages.Package) {
 			// false positives)
 			continue
 		}
-		if calledInReturn(inboundCalls) {
-			continue
-		}
 		res := results.At(i)
 		name := paramDesc(i, res)
 		c.addIssue(fn, res.Pos(), "result %s is always %s", name, constValueString(cnst))
@@ -485,6 +542,9 @@ func (c *Checker) checkFunc(fn *ssa.Function, pkg *packages.Package) {
 
 resLoop:
 	for i := 0; i < results.Len(); i++ {
+		if resultsBy != "" {
+			continue // we can't change the returns
+		}
 		if allRetsExtracting {
 			continue
 		}
@@ -523,6 +583,9 @@ resLoop:
 	}
 
 	for i, par := range fn.Params {
+		if paramsBy != "" {
+			continue // we can't change the params
+		}
 		if i == 0 && fn.Signature.Recv() != nil { // receiver
 			continue
 		}
@@ -546,43 +609,6 @@ resLoop:
 		}
 		c.addIssue(fn, par.Pos(), "%s %s", par.Name(), reason)
 	}
-}
-
-// calledInReturn reports whether any of a function's inbound calls happened
-// directly as a return statement. That is, if function "foo" was used via
-// "return foo()". This means that the result parameters of the function cannot
-// be changed without breaking other code.
-func calledInReturn(in []*callgraph.Edge) bool {
-	for _, edge := range in {
-		val := edge.Site.Value()
-		if val == nil { // e.g. go statement
-			continue
-		}
-		refs := *val.Referrers()
-		if len(refs) == 0 { // no use of return values
-			continue
-		}
-		allReturnExtracts := true
-		for _, instr := range refs {
-			switch x := instr.(type) {
-			case *ssa.Return:
-				return true
-			case *ssa.Extract:
-				refs := *x.Referrers()
-				if len(refs) != 1 {
-					allReturnExtracts = false
-					break
-				}
-				if _, ok := refs[0].(*ssa.Return); !ok {
-					allReturnExtracts = false
-				}
-			}
-		}
-		if allReturnExtracts {
-			return true
-		}
-	}
-	return false
 }
 
 // nodeStr stringifies a syntax tree node. It is only meant for simple nodes,
@@ -871,28 +897,55 @@ func (c *Checker) multipleImpls(pkg *packages.Package, fn *ssa.Function) bool {
 // arguments were all received via another function call. That is, if a call to
 // function "foo" was of the form "foo(bar())". This often means that the
 // parameters in "foo" are difficult to remove, even if unused.
-func receivesExtractedArgs(call *ssa.CallCommon) *ssa.Function {
-	callee := findFunction(call.Value)
+func receivesExtractedArgs(freeVars map[*ssa.FreeVar]*ssa.Function, call *ssa.CallCommon) *ssa.Function {
+	callee := findFunction(freeVars, call.Value)
 	if callee == nil {
 		return nil
 	}
 	if callee.Signature.Params().Len() < 2 {
-		return nil // extracting into one param is ok
+		// there aren't multiple parameters
+		return nil
 	}
-	for i, arg := range call.Args {
-		if i == 0 && callee.Signature.Recv() != nil {
-			// receiver argument
-			continue
+	args := call.Args
+	if callee.Signature.Recv() != nil {
+		// skip the receiver argument
+		args = args[1:]
+	}
+	if c := callExtract(args); c != nil {
+		return callee
+	}
+	return nil
+}
+
+func callExtract(values []ssa.Value) *ssa.Call {
+	if len(values) == 1 {
+		if call, ok := values[0].(*ssa.Call); ok {
+			return call
 		}
-		ext, ok := arg.(*ssa.Extract)
+	}
+	var prev *ssa.Call
+	for i, val := range values {
+		ext, ok := val.(*ssa.Extract)
 		if !ok {
 			return nil
 		}
-		if _, ok := ext.Tuple.(*ssa.Call); !ok {
-			return nil
+		if ext.Index != i {
+			return nil // not extracted in the same order
+		}
+		call, ok := ext.Tuple.(*ssa.Call)
+		if !ok {
+			return nil // not a call
+		}
+		if prev == nil {
+			prev = call
+		} else if prev != call {
+			return nil // not the same calls
 		}
 	}
-	return callee
+	if prev != nil && prev.Call.Signature().Results().Len() != len(values) {
+		return nil // not extracting all the results
+	}
+	return prev
 }
 
 // paramDesc returns a string describing a parameter variable. If the parameter

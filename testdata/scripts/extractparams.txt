@@ -47,7 +47,7 @@ func funcResultsAsParams(a, b FooType) FooType {
 	return a + 1
 }
 
-func funcResultNotAsParams(a, b FooType) FooType {
+func funcResultNotAsParams(a, b FooType) FooType { // TODO: false negative
 	DoWork()
 	return a + 1
 }

@@ -10,6 +10,7 @@ foo.go:13:42: nonPanicImpl - f is unused
 foo.go:30:43: nonPanicImpl2 - f is unused
 foo.go:49:19: nonConstImpl - f is unused
 foo.go:49:31: nonConstImpl - s is unused
+foo.go:53:28: oneOverwritten - i is unused
 -- foo.go --
 package foo
 
@@ -64,7 +65,7 @@ func nonConstImpl(f fooError, s string) error { return iface.(error) }
 func logImpl(f int) { log.Print("not implemented") }
 
 func oneOverwritten(a int, i uint8) (int, uint8) {
-	i = 3 // TODO: skip this as a real use, without breaking "_ = i"
+	i = 3
 	a += 1
 	return a, i
 }

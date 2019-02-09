@@ -706,8 +706,15 @@ func (c *Checker) anyRealUse(par *ssa.Parameter, pos int, pkg *packages.Package)
 			if any {
 				return false
 			}
-			if id, ok := node.(*ast.Ident); ok {
-				obj := pkg.TypesInfo.Uses[id]
+			asgn, ok := node.(*ast.AssignStmt)
+			if !ok || asgn.Tok != token.ASSIGN || len(asgn.Lhs) != 1 || len(asgn.Rhs) != 1 {
+				return true
+			}
+			if left, ok := asgn.Lhs[0].(*ast.Ident); !ok || left.Name != "_" {
+				return true
+			}
+			if right, ok := asgn.Rhs[0].(*ast.Ident); ok {
+				obj := pkg.TypesInfo.Uses[right]
 				if obj != nil && obj.Pos() == par.Pos() {
 					any = true
 				}

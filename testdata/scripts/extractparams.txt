@@ -9,6 +9,7 @@ module testdata.tld/foo
 foo.go:21:24: funcResultAsParam - a is unused
 foo.go:25:38: (FooType).methodResultAsParam - a is unused
 foo.go:32:29: funcResultsAsParams - b is unused
+foo.go:37:31: funcResultNotAsParams - b is unused
 foo.go:58:26: returnResultsOwn - result 0 (testdata.tld/foo.FooType) is never used
 -- foo.go --
 package foo
@@ -47,7 +48,7 @@ func funcResultsAsParams(a, b FooType) FooType {
 	return a + 1
 }
 
-func funcResultNotAsParams(a, b FooType) FooType { // TODO: false negative
+func funcResultNotAsParams(a, b FooType) FooType {
 	DoWork()
 	return a + 1
 }

@@ -10,7 +10,7 @@ foo.go:8:28: (FooType).oneUnused - a is unused
 -- foo.go --
 package foo
 
-// TODO: false negative if unexported?
+// FooType is exported, as otherwise go/ssa gets rid of it.
 type FooType int
 
 func (f FooType) allUsed(a FooType) FooType { return f + a }

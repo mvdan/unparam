@@ -277,7 +277,7 @@ func (c *Checker) Check() ([]Issue, error) {
 					if fn := findFunction(freeVars, instr.Common().Value); fn != nil {
 						c.localCallSites[fn] = append(c.localCallSites[fn], instr)
 					}
-					fn := receivesExtractedArgs(freeVars, instr.Common())
+					fn := receivesExtractedArgs(freeVars, instr)
 					if fn != nil {
 						// fn(someFunc()) fixes params
 						c.paramsRequiredBy[fn] = "forwarded call"
@@ -305,7 +305,7 @@ func (c *Checker) Check() ([]Issue, error) {
 							c.signRequiredBy[fn] = "result"
 						}
 					}
-					if call := callExtract(instr.Results); call != nil {
+					if call := callExtract(instr, instr.Results); call != nil {
 						if fn := findFunction(freeVars, call.Call.Value); fn != nil {
 							// return fn()
 							c.resultsRequiredBy[fn] = "return"
@@ -896,8 +896,9 @@ func (c *Checker) multipleImpls(pkg *packages.Package, fn *ssa.Function) bool {
 // arguments were all received via another function call. That is, if a call to
 // function "foo" was of the form "foo(bar())". This often means that the
 // parameters in "foo" are difficult to remove, even if unused.
-func receivesExtractedArgs(freeVars map[*ssa.FreeVar]*ssa.Function, call *ssa.CallCommon) *ssa.Function {
-	callee := findFunction(freeVars, call.Value)
+func receivesExtractedArgs(freeVars map[*ssa.FreeVar]*ssa.Function, call ssa.CallInstruction) *ssa.Function {
+	comm := call.Common()
+	callee := findFunction(freeVars, comm.Value)
 	if callee == nil {
 		return nil
 	}
@@ -905,18 +906,20 @@ func receivesExtractedArgs(freeVars map[*ssa.FreeVar]*ssa.Function, call *ssa.Ca
 		// there aren't multiple parameters
 		return nil
 	}
-	args := call.Args
+	args := comm.Args
 	if callee.Signature.Recv() != nil {
 		// skip the receiver argument
 		args = args[1:]
 	}
-	if c := callExtract(args); c != nil {
+	if c := callExtract(call, args); c != nil {
 		return callee
 	}
 	return nil
 }
 
-func callExtract(values []ssa.Value) *ssa.Call {
+// callExtract returns the call instruction fn(...) if it is used directly as
+// arguments to the parent instruction, such as fn2(fn(...)) or return fn(...).
+func callExtract(parent ssa.Instruction, values []ssa.Value) *ssa.Call {
 	if len(values) == 1 {
 		if call, ok := values[0].(*ssa.Call); ok {
 			return call
@@ -941,8 +944,18 @@ func callExtract(values []ssa.Value) *ssa.Call {
 			return nil // not the same calls
 		}
 	}
-	if prev != nil && prev.Call.Signature().Results().Len() != len(values) {
+	if prev == nil {
+		return nil
+	}
+	if prev.Call.Signature().Results().Len() != len(values) {
 		return nil // not extracting all the results
+	}
+	if prev.Pos() < parent.Pos() {
+		// Of the form:
+		//
+		//   a, b := fn()
+		//   fn2(a, b)
+		return nil
 	}
 	return prev
 }

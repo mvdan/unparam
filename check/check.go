@@ -21,8 +21,6 @@ import (
 	"sort"
 	"strings"
 
-	"golang.org/x/tools/go/callgraph"
-	"golang.org/x/tools/go/callgraph/cha"
 	"golang.org/x/tools/go/packages"
 	"golang.org/x/tools/go/ssa"
 	"golang.org/x/tools/go/ssa/ssautil"
@@ -50,9 +48,8 @@ func UnusedParams(tests bool, exported, debug bool, args ...string) ([]string, e
 // UnusedParams instead, unless you want to use a *loader.Program and
 // *ssa.Program directly.
 type Checker struct {
-	pkgs  []*packages.Package
-	prog  *ssa.Program
-	graph *callgraph.Graph
+	pkgs []*packages.Package
+	prog *ssa.Program
 
 	wd string
 
@@ -74,6 +71,10 @@ type Checker struct {
 	// typesImplementing records the method names that each named type needs
 	// to typecheck properly, as they're required to implement interfaces.
 	typesImplementing map[*types.Named][]string
+
+	// localCallSites is a very simple form of a callgraph, only recording
+	// direct function calls within a single package.
+	localCallSites map[*ssa.Function][]ssa.CallInstruction
 
 	// These three maps record whether an entire func's signature cannot be
 	// changed, or only its list of parameters or results.
@@ -226,9 +227,6 @@ func (c *Checker) Check() ([]Issue, error) {
 			})
 		}
 	}
-	c.graph = cha.CallGraph(c.prog)
-	c.graph.DeleteSyntheticNodes()
-
 	allFuncs := ssautil.AllFunctions(c.prog)
 
 	// map from *ssa.FreeVar to *ssa.Function, to find function literals
@@ -266,6 +264,7 @@ func (c *Checker) Check() ([]Issue, error) {
 	c.signRequiredBy = make(map[*ssa.Function]string)
 	c.paramsRequiredBy = make(map[*ssa.Function]string)
 	c.resultsRequiredBy = make(map[*ssa.Function]string)
+	c.localCallSites = make(map[*ssa.Function][]ssa.CallInstruction)
 	for curFunc := range allFuncs {
 		if strings.HasPrefix(curFunc.Synthetic, "wrapper for func") {
 			// Synthetic func wrappers are uninteresting, and can
@@ -275,6 +274,9 @@ func (c *Checker) Check() ([]Issue, error) {
 		for _, b := range curFunc.Blocks {
 			for _, instr := range b.Instrs {
 				if instr, ok := instr.(ssa.CallInstruction); ok {
+					if fn := findFunction(freeVars, instr.Common().Value); fn != nil {
+						c.localCallSites[fn] = append(c.localCallSites[fn], instr)
+					}
 					fn := receivesExtractedArgs(freeVars, instr.Common())
 					if fn != nil {
 						// fn(someFunc()) fixes params
@@ -477,10 +479,6 @@ func (c *Checker) checkFunc(fn *ssa.Function, pkg *packages.Package) {
 		c.debug("  skip - dummy implementation\n")
 		return
 	}
-	var inboundCalls []*callgraph.Edge
-	if node := c.graph.Nodes[fn]; node != nil {
-		inboundCalls = node.In
-	}
 	if by := c.signRequiredBy[fn]; by != "" {
 		c.debug("  skip - func signature required by %s\n", by)
 		return
@@ -498,6 +496,7 @@ func (c *Checker) checkFunc(fn *ssa.Function, pkg *packages.Package) {
 	}
 	paramsBy := c.paramsRequiredBy[fn]
 	resultsBy := c.resultsRequiredBy[fn]
+	callSites := c.localCallSites[fn]
 
 	results := fn.Signature.Results()
 	sameConsts := make([]*ssa.Const, results.Len())
@@ -555,8 +554,8 @@ resLoop:
 			continue
 		}
 		count := 0
-		for _, edge := range inboundCalls {
-			val := edge.Site.Value()
+		for _, site := range callSites {
+			val := site.Value()
 			if val == nil { // e.g. go statement
 				count++
 				continue
@@ -600,7 +599,7 @@ resLoop:
 			continue
 		}
 		reason := "is unused"
-		constStr := c.alwaysReceivedConst(inboundCalls, par, i)
+		constStr := c.alwaysReceivedConst(callSites, par, i)
 		if constStr != "" {
 			reason = fmt.Sprintf("always receives %s", constStr)
 		} else if c.anyRealUse(par, i, pkg) {
@@ -629,8 +628,8 @@ func nodeStr(node ast.Node) string {
 // This function is used to recommend that the parameter be replaced by a direct
 // use of the constant. To avoid false positives, the function will return false
 // if the number of inbound calls is too low.
-func (c *Checker) alwaysReceivedConst(in []*callgraph.Edge, par *ssa.Parameter, pos int) string {
-	if len(in) < 4 {
+func (c *Checker) alwaysReceivedConst(callSites []ssa.CallInstruction, par *ssa.Parameter, pos int) string {
+	if len(callSites) < 4 {
 		// We can't possibly receive the same constant value enough
 		// times, hence a potential false positive.
 		return ""
@@ -647,8 +646,8 @@ func (c *Checker) alwaysReceivedConst(in []*callgraph.Edge, par *ssa.Parameter, 
 		origPos--
 	}
 	seenOrig := ""
-	for _, edge := range in {
-		call := edge.Site.Common()
+	for _, site := range callSites {
+		call := site.Common()
 		if pos >= len(call.Args) {
 			// TODO: investigate? Weird crash in
 			// internal/x/net/http2/hpack/hpack_test.go, where we

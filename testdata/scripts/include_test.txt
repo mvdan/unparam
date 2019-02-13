@@ -1,14 +1,15 @@
 env HOME=$WORK/home
+env $=$
 
 ! unparam .
-stdout 'fooUnused .* unused'
-! stdout 'footestUnused .* unused'
-! stdout 'footestpkgUnused .* unused'
+stderr 'fooUnused .* unused'
+! stderr 'footestUnused .* unused'
+! stderr 'footestpkgUnused .* unused'
 
 ! unparam -tests=true .
-stdout 'fooUnused .* unused'
-stdout 'footestUnused .* unused'
-stdout 'footestpkgUnused .* unused'
+stderr 'fooUnused .* unused'
+stderr 'footestUnused .* unused'
+stderr 'footestpkgUnused .* unused'
 
 -- go.mod --
 module testdata.tld/foo

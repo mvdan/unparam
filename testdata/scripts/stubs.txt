@@ -1,16 +1,17 @@
 env HOME=$WORK/home
+env $=$
 
 ! unparam .
-cmp stdout stdout.golden
+cmpenv stderr stderr.golden
 
 -- go.mod --
 module testdata.tld/foo
--- stdout.golden --
-foo.go:13:42: nonPanicImpl - f is unused
-foo.go:30:43: nonPanicImpl2 - f is unused
-foo.go:49:19: nonConstImpl - f is unused
-foo.go:49:31: nonConstImpl - s is unused
-foo.go:53:28: oneOverwritten - i is unused
+-- stderr.golden --
+$WORK/foo.go:13:42: nonPanicImpl - f is unused
+$WORK/foo.go:30:43: nonPanicImpl2 - f is unused
+$WORK/foo.go:49:19: nonConstImpl - f is unused
+$WORK/foo.go:49:31: nonConstImpl - s is unused
+$WORK/foo.go:53:28: oneOverwritten - i is unused
 -- foo.go --
 package foo
 

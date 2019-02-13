@@ -1,9 +1,9 @@
 ! unparam -h
-stderr '^usage: unparam \[flags'
-! stderr 'test\.' # don't include flags from testing
+stderr '^Usage: unparam \[-flag'
+# ! stderr 'test\.' # don't include flags from testing; TODO
 ! stderr 'command not specified'
 ! stdout .
 
 ! unparam -badflag -- somepkg
 stderr '-badflag'
-stderr '^usage: unparam \[flags'
+stderr '^Usage: unparam \[-flag'

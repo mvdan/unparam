@@ -1,16 +1,17 @@
 env HOME=$WORK/home
+env $=$
 
 ! unparam .
-cmp stdout stdout.golden
+cmpenv stderr stderr.golden
 
 -- go.mod --
 module testdata.tld/foo
--- stdout.golden --
-foo.go:21:24: funcResultAsParam - a is unused
-foo.go:25:38: (FooType).methodResultAsParam - a is unused
-foo.go:32:29: funcResultsAsParams - b is unused
-foo.go:37:31: funcResultNotAsParams - b is unused
-foo.go:58:26: returnResultsOwn - result 0 (testdata.tld/foo.FooType) is never used
+-- stderr.golden --
+$WORK/foo.go:21:24: funcResultAsParam - a is unused
+$WORK/foo.go:25:38: (FooType).methodResultAsParam - a is unused
+$WORK/foo.go:32:29: funcResultsAsParams - b is unused
+$WORK/foo.go:37:31: funcResultNotAsParams - b is unused
+$WORK/foo.go:58:26: returnResultsOwn - result 0 (testdata.tld/foo.FooType) is never used
 -- foo.go --
 package foo
 

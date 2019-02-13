@@ -4,19 +4,11 @@
 package main
 
 import (
-	"flag"
-	"fmt"
 	"os"
 
 	"mvdan.cc/unparam/passes/unparam"
-)
 
-var (
-	flagSet = flag.NewFlagSet("unparam", flag.ContinueOnError)
-
-	tests    = flagSet.Bool("tests", false, "load tests too")
-	exported = flagSet.Bool("exported", false, "inspect exported functions")
-	debug    = flagSet.Bool("debug", false, "debug prints")
+	"golang.org/x/tools/go/analysis/singlechecker"
 )
 
 func main() {
@@ -24,26 +16,7 @@ func main() {
 }
 
 func main1() int {
-	flagSet.Usage = func() {
-		fmt.Fprintln(os.Stderr, "usage: unparam [flags] [package ...]")
-		flagSet.PrintDefaults()
-	}
-	if err := flagSet.Parse(os.Args[1:]); err != nil {
-		if err != flag.ErrHelp {
-			fmt.Fprintln(os.Stderr, err)
-		}
-		return 1
-	}
-	warns, err := unparam.UnusedParams(*tests, *exported, *debug, flagSet.Args()...)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return 1
-	}
-	for _, warn := range warns {
-		fmt.Println(warn)
-	}
-	if len(warns) > 0 {
-		return 1
-	}
+	// TODO: make singlechecker.Main return an int instead of using os.Exit.
+	singlechecker.Main(unparam.Analyzer)
 	return 0
 }

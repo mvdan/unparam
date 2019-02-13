@@ -1,13 +1,19 @@
 env HOME=$WORK/home
+env $=$
 
-! unparam .
-cmp stdout stdout.golden
+unparam .
+# TODO: oneUnusedPhi and ! unparam .
+cmpenv stderr stderr.golden
 
 -- go.mod --
 module testdata.tld/foo
--- stdout.golden --
+-- stderr.golden --
 -- foo.go --
 package foo
+
+type FooType int
+
+var DoWork func()
 
 func allUsedPhi(a, b FooType) *FooType {
 	DoWork()

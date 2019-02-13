@@ -1,19 +1,20 @@
 env HOME=$WORK/home
+env $=$
 
 ! unparam .
-cmp stdout stdout.golden
+cmpenv stderr stderr.golden
 
 -- go.mod --
 module testdata.tld/foo
--- stdout.golden --
-foo.go:12:27: manyReturns - result 0 (int) is always 3
-foo.go:30:29: manyReturnsMultiple - result b is always true
-foo.go:30:37: manyReturnsMultiple - result s is always "foo"
-foo.go:38:30: singleNilError - result 1 (error) is always nil
-foo.go:43:28: manyNilError - result 1 (error) is always nil
-foo.go:74:39: doubleReturnNotForwarded - result 1 (error) is always nil
-foo.go:92:29: neverForwarded - result 1 (error) is always nil
-foo.go:99:50: (FooType).neverForwardedPtrMethod - result 1 (error) is always nil
+-- stderr.golden --
+$WORK/foo.go:12:27: manyReturns - result 0 (int) is always 3
+$WORK/foo.go:30:29: manyReturnsMultiple - result b is always true
+$WORK/foo.go:30:37: manyReturnsMultiple - result s is always "foo"
+$WORK/foo.go:38:30: singleNilError - result 1 (error) is always nil
+$WORK/foo.go:43:28: manyNilError - result 1 (error) is always nil
+$WORK/foo.go:74:39: doubleReturnNotForwarded - result 1 (error) is always nil
+$WORK/foo.go:92:29: neverForwarded - result 1 (error) is always nil
+$WORK/foo.go:99:50: (FooType).neverForwardedPtrMethod - result 1 (error) is always nil
 -- foo.go --
 package foo
 

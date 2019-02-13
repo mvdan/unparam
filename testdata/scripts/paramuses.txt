@@ -1,12 +1,13 @@
 env HOME=$WORK/home
+env $=$
 
 ! unparam .
-cmp stdout stdout.golden
+cmpenv stderr stderr.golden
 
 -- go.mod --
 module testdata.tld/foo
--- stdout.golden --
-foo.go:28:36: notUsedInUnderscoreAssignment - s is unused
+-- stderr.golden --
+$WORK/foo.go:28:36: notUsedInUnderscoreAssignment - s is unused
 -- foo.go --
 package foo
 

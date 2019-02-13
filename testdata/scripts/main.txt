@@ -1,13 +1,14 @@
 env HOME=$WORK/home
+env $=$
 
 ! unparam .
-cmp stdout stdout.golden
+cmpenv stderr stderr.golden
 
 -- go.mod --
 module testdata.tld/foo
--- stdout.golden --
-main.go:3:19: OneUnused - b is unused
-main.go:10:29: ImplementsButUnused - b is unused
+-- stderr.golden --
+$WORK/main.go:3:19: OneUnused - b is unused
+$WORK/main.go:10:29: ImplementsButUnused - b is unused
 -- main.go --
 package main
 

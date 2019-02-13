@@ -1,18 +1,19 @@
 env HOME=$WORK/home
+env $=$
 
 ! unparam .
-cmp stdout stdout.golden
+cmpenv stderr stderr.golden
 
 -- go.mod --
 module testdata.tld/foo
--- stdout.golden --
-foo.go:9:22: singleIgnored - result 0 (rune) is never used
-foo.go:30:27: singleIgnoredName - result r is never used
-foo.go:40:33: singleIgnoredUnderscore - result 0 (rune) is never used
-foo.go:50:20: allIgnored - result 0 (int) is never used
-foo.go:50:25: allIgnored - result 1 (string) is never used
-foo.go:60:26: someIgnored - result 1 (string) is never used
-foo.go:85:29: ignoredGoDefer - result 1 (string) is never used
+-- stderr.golden --
+$WORK/foo.go:9:22: singleIgnored - result 0 (rune) is never used
+$WORK/foo.go:30:27: singleIgnoredName - result r is never used
+$WORK/foo.go:40:33: singleIgnoredUnderscore - result 0 (rune) is never used
+$WORK/foo.go:50:20: allIgnored - result 0 (int) is never used
+$WORK/foo.go:50:25: allIgnored - result 1 (string) is never used
+$WORK/foo.go:60:26: someIgnored - result 1 (string) is never used
+$WORK/foo.go:85:29: ignoredGoDefer - result 1 (string) is never used
 -- foo.go --
 package foo
 

@@ -1,18 +1,19 @@
 env HOME=$WORK/home
+env $=$
 
 ! unparam .
-cmp stdout stdout.golden
+cmpenv stderr stderr.golden
 
 -- go.mod --
 module testdata.tld/foo
--- stdout.golden --
-foo.go:9:23: receivesSameMany - f always receives 3
-foo.go:16:26: receivesSameManyLit - r always receives 'a' (97)
-foo.go:23:28: receivesSameManyNamed - f always receives FooConst (123)
-foo.go:30:28: receivesSameManyMixed - f always receives 123
-foo.go:72:32: receivesSameFromGenerated - f always receives int(2) (2)
-foo.go:79:22: receivesSameNil - v always receives nil
-foo.go:86:28: receivesSameInterface - v always receives 123
+-- stderr.golden --
+$WORK/foo.go:9:23: receivesSameMany - f always receives 3
+$WORK/foo.go:16:26: receivesSameManyLit - r always receives 'a' (97)
+$WORK/foo.go:23:28: receivesSameManyNamed - f always receives FooConst (123)
+$WORK/foo.go:30:28: receivesSameManyMixed - f always receives 123
+$WORK/foo.go:72:32: receivesSameFromGenerated - f always receives int(2) (2)
+$WORK/foo.go:79:22: receivesSameNil - v always receives nil
+$WORK/foo.go:86:28: receivesSameInterface - v always receives 123
 -- foo.go --
 package foo
 

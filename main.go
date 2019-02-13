@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"os"
 
-	"mvdan.cc/unparam/check"
+	"mvdan.cc/unparam/passes/unparam"
 )
 
 var (
@@ -34,7 +34,7 @@ func main1() int {
 		}
 		return 1
 	}
-	warns, err := check.UnusedParams(*tests, *exported, *debug, flagSet.Args()...)
+	warns, err := unparam.UnusedParams(*tests, *exported, *debug, flagSet.Args()...)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1

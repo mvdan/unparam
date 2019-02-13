@@ -1,9 +1,9 @@
 // Copyright (c) 2017, Daniel Martí <mvdan@mvdan.cc>
 // See LICENSE for licensing information
 
-// Package check implements the unparam linter. Note that its API is not
-// stable.
-package check
+// Package unparam implements the unused parameter linter. Note that its API is
+// not stable.
+package unparam
 
 import (
 	"bytes"

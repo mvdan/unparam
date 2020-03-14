@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/rogpeppe/go-internal/gotooltest"
 	"github.com/rogpeppe/go-internal/testscript"
 )
 
@@ -16,7 +17,15 @@ func TestMain(m *testing.M) {
 
 func TestScripts(t *testing.T) {
 	t.Parallel()
-	testscript.Run(t, testscript.Params{
+	p := testscript.Params{
 		Dir: filepath.Join("testdata", "scripts"),
-	})
+		Setup: func(env *testscript.Env) error {
+			env.Vars = append(env.Vars, "/="+string(os.PathSeparator))
+			return nil
+		},
+	}
+	if err := gotooltest.Setup(&p); err != nil {
+		t.Fatal(err)
+	}
+	testscript.Run(t, p)
 }

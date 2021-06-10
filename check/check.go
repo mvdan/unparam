@@ -153,6 +153,11 @@ func (c *Checker) CheckExportedFuncs(exported bool) {
 	c.exported = exported
 }
 
+// CheckTests sets whether to inspect tests.
+func (c *Checker) CheckTests(tests bool) {
+	c.tests = tests
+}
+
 func (c *Checker) debug(format string, a ...interface{}) {
 	if c.debugLog != nil {
 		fmt.Fprintf(c.debugLog, format, a...)

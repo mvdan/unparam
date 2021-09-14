@@ -1,6 +1,6 @@
 # unparam
 
-	go get mvdan.cc/unparam
+	go install mvdan.cc/unparam@latest
 
 Reports unused function parameters and results in your code.
 

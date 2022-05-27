@@ -44,7 +44,7 @@ func UnusedParams(tests, exported, debug bool, args ...string) ([]string, error)
 	return c.lines(args...)
 }
 
-// Checker finds unused parameterss in a program. You probably want to use
+// Checker finds unused parameters in a program. You probably want to use
 // UnusedParams instead, unless you want to use a *loader.Program and
 // *ssa.Program directly.
 type Checker struct {
@@ -877,8 +877,15 @@ func recvPrefix(recv *ast.FieldList) string {
 		}
 		expr = star.X
 	}
-	id := expr.(*ast.Ident)
-	return id.Name + "."
+
+	switch v := expr.(type) {
+	case *ast.Ident:
+		return v.Name + "."
+	case *ast.IndexListExpr:
+		return v.X.(*ast.Ident).Name + "."
+	default:
+		return ""
+	}
 }
 
 // multipleImpls reports whether a function has multiple implementations in the

@@ -3,6 +3,8 @@ cmp stdout stdout.golden
 
 -- go.mod --
 module testdata.tld/foo
+
+go 1.18
 -- stdout.golden --
 foo_main.go:5:23: oneUnusedMain - b is unused
 foo_main.go:24:22: multImplsMethod - f is unused
@@ -12,6 +14,7 @@ package foo
 var DoWork func()
 
 type FooType int
+
 -- foo_main.go --
 //+build !other
 
@@ -40,6 +43,7 @@ func multImplsMethod(f int) uint64 {
 	DoWork()
 	return 3
 }
+
 -- foo_other.go --
 //+build other
 

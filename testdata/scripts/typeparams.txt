@@ -1,5 +1,3 @@
-[!go1.18] skip
-
 # TODO: catch unusedGeneric.
 unparam .
 

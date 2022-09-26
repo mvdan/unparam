@@ -15,10 +15,11 @@ func TestMain(m *testing.M) {
 	}))
 }
 
-func TestScripts(t *testing.T) {
+func TestScript(t *testing.T) {
 	t.Parallel()
 	p := testscript.Params{
-		Dir: filepath.Join("testdata", "scripts"),
+		Dir:                 filepath.Join("testdata", "script"),
+		RequireExplicitExec: true,
 		Setup: func(env *testscript.Env) error {
 			env.Vars = append(env.Vars, "/="+string(os.PathSeparator))
 			return nil

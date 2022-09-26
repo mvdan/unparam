@@ -1,5 +1,5 @@
 # TODO: catch unusedGeneric.
-unparam .
+exec unparam .
 
 -- stdout.golden --
 -- go.mod --

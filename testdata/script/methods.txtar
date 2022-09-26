@@ -1,4 +1,4 @@
-! unparam .
+! exec unparam .
 cmp stdout stdout.golden
 
 -- go.mod --

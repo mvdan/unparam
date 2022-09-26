@@ -1,9 +1,9 @@
-! unparam .
+! exec unparam .
 stdout 'fooUnused .* unused'
 ! stdout 'footestUnused .* unused'
 ! stdout 'footestpkgUnused .* unused'
 
-! unparam -tests=true .
+! exec unparam -tests=true .
 stdout 'fooUnused .* unused'
 stdout 'footestUnused .* unused'
 stdout 'footestpkgUnused .* unused'

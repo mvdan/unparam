@@ -589,9 +589,8 @@ resLoop:
 			continue
 		}
 		c.debug("%s\n", par.String())
-		switch par.Object().Name() {
-		case "", "_": // unnamed
-			c.debug("  skip - unnamed\n")
+		if name := par.Object().Name(); name == "" || name[0] == '_' {
+			c.debug("  skip - no name or underscore name\n")
 			continue
 		}
 		if stdSizes.Sizeof(par.Type()) == 0 {

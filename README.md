@@ -7,7 +7,7 @@ Reports unused function parameters and results in your code.
 To minimise false positives, it ignores certain cases such as:
 
 * Exported functions (by default, see `-exported`)
-* Unnamed and underscore parameters
+* Unnamed and underscore parameters (like `_` and `_foo`)
 * Funcs that may satisfy an interface
 * Funcs that may satisfy a function signature
 * Funcs that are stubs (empty, only error, immediately return, etc)

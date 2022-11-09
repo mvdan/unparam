@@ -41,3 +41,6 @@ func notUsedInUnderscoreAssignment(s string, d time.Duration) {
 	DoWork()
 	Sink = d
 }
+
+func UnusedUnderscoreParam(_ int)            { DoWork() }
+func UnusedUnderscorePrefixedParam(_var int) { DoWork() }

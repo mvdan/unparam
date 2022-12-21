@@ -593,9 +593,13 @@ resLoop:
 			c.debug("  skip - no name or underscore name\n")
 			continue
 		}
-		if stdSizes.Sizeof(par.Type()) == 0 {
-			c.debug("  skip - zero size\n")
-			continue
+		t := par.Type()
+		// asking for the size of a type param would panic, as it is unknowable
+		if _, ok := t.(*types.TypeParam); !ok {
+			if stdSizes.Sizeof(par.Type()) == 0 {
+				c.debug("  skip - zero size\n")
+				continue
+			}
 		}
 		reason := "is unused"
 		constStr := c.alwaysReceivedConst(callSites, par, i)

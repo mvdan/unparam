@@ -1,7 +1,10 @@
-# TODO: catch unusedGeneric.
-exec unparam .
+! exec unparam .
+cmp stderr stderr.golden
+cmp stdout stdout.golden
 
+-- stderr.golden --
 -- stdout.golden --
+foo.go:39:38: (Tuple[T1, T2]).unusedGeneric - t1 is unused
 -- go.mod --
 module testdata.tld/foo
 

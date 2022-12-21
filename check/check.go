@@ -595,11 +595,13 @@ resLoop:
 		}
 		t := par.Type()
 		// asking for the size of a type param would panic, as it is unknowable
-		if _, ok := t.(*types.TypeParam); !ok {
+		if !containsTypeParam(t) {
 			if stdSizes.Sizeof(par.Type()) == 0 {
 				c.debug("  skip - zero size\n")
 				continue
 			}
+		} else {
+			c.debug("  examine - type parameter\n")
 		}
 		reason := "is unused"
 		constStr := c.alwaysReceivedConst(callSites, par, i)
@@ -611,6 +613,30 @@ resLoop:
 		}
 		c.addIssue(fn, par.Pos(), "%s %s", par.Name(), reason)
 	}
+}
+
+func containsTypeParam(t types.Type) bool {
+	switch t := t.(type) {
+	case *types.TypeParam, *types.Union:
+		return true
+	case *types.Struct:
+		nf := t.NumFields()
+		for i := 0; i < nf; i++ {
+			if containsTypeParam(t.Field(nf).Type()) {
+				return true
+			}
+		}
+	case *types.Array:
+		return containsTypeParam(t.Elem())
+	case *types.Named:
+		args := t.TypeArgs()
+		for i := 0; i < args.Len(); i++ {
+			if containsTypeParam(args.At(i)) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // nodeStr stringifies a syntax tree node. It is only meant for simple nodes,

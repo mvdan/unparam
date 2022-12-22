@@ -13,6 +13,8 @@ foo.go:69:18: g1a - v is unused
 foo.go:72:22: g2a - v is unused
 foo.go:75:18: g1p - v is unused
 foo.go:78:22: g2p - v is unused
+foo.go:83:17: nonGeneric - v is unused
+foo.go:86:42: (GenericType1[T1]).genericMethod - v is unused
 -- go.mod --
 module testdata.tld/foo
 
@@ -97,6 +99,20 @@ func g1p[T1 any](v *GenericType1[T1]) {
 }
 func g2p[T1, T2 any](v *GenericType2[T1, T2]) {
 	DoWork()
+}
+
+// test logic to skip non-generic functions/methods
+func nonGeneric(v any) {
+	DoWork()
+}
+func (g1 GenericType1[T1]) genericMethod(v any) {
+	DoWork()
+}
+
+// make sure nonGeneric & genericMethod are reachable
+func Expose() {
+	nonGeneric(nil)
+	(GenericType1[any])(nil).genericMethod(nil)
 }
 
 -- foo_main.go --

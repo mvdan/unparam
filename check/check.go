@@ -581,6 +581,8 @@ resLoop:
 		c.addIssue(fn, res.Pos(), "result %s is never used", name)
 	}
 
+	fnIsGeneric := fn.TypeParams().Len() > 0
+
 	for i, par := range fn.Params {
 		if paramsBy != "" {
 			continue // we can't change the params
@@ -595,7 +597,7 @@ resLoop:
 		}
 		t := par.Type()
 		// asking for the size of a type param would panic, as it is unknowable
-		if !containsTypeParam(t) {
+		if !fnIsGeneric || !containsTypeParam(t) {
 			if stdSizes.Sizeof(par.Type()) == 0 {
 				c.debug("  skip - zero size\n")
 				continue

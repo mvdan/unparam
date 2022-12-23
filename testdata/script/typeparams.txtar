@@ -5,6 +5,16 @@ cmp stdout stdout.golden
 -- stderr.golden --
 -- stdout.golden --
 foo.go:39:38: (Tuple[T1, T2]).unusedGeneric - t1 is unused
+foo.go:57:17: g1 - v is unused
+foo.go:60:21: g2 - v is unused
+foo.go:63:18: g1s - v is unused
+foo.go:66:22: g2s - v is unused
+foo.go:69:18: g1a - v is unused
+foo.go:72:22: g2a - v is unused
+foo.go:75:18: g1p - v is unused
+foo.go:78:22: g2p - v is unused
+foo.go:83:17: nonGeneric - v is unused
+foo.go:86:42: (GenericType1[T1]).genericMethod - v is unused
 -- go.mod --
 module testdata.tld/foo
 
@@ -62,6 +72,47 @@ type GenericType1[T1 any] []T1
 type GenericType2[T1 any, T2 any] struct {
 	t1 T1
 	t2 T2
+}
+
+// must be able to handle parameters which are not themselves type parameters,
+// but have type parameters embedded within them
+func g1[T1 any](v GenericType1[T1]) {
+	DoWork()
+}
+func g2[T1, T2 any](v GenericType2[T1, T2]) {
+	DoWork()
+}
+func g1s[T1 any](v []GenericType1[T1]) {
+	DoWork()
+}
+func g2s[T1, T2 any](v []GenericType2[T1, T2]) {
+	DoWork()
+}
+func g1a[T1 any](v [2]GenericType1[T1]) {
+	DoWork()
+}
+func g2a[T1, T2 any](v [2]GenericType2[T1, T2]) {
+	DoWork()
+}
+func g1p[T1 any](v *GenericType1[T1]) {
+	DoWork()
+}
+func g2p[T1, T2 any](v *GenericType2[T1, T2]) {
+	DoWork()
+}
+
+// test logic to skip non-generic functions/methods
+func nonGeneric(v any) {
+	DoWork()
+}
+func (g1 GenericType1[T1]) genericMethod(v any) {
+	DoWork()
+}
+
+// make sure nonGeneric & genericMethod are reachable
+func Expose() {
+	nonGeneric(nil)
+	(GenericType1[any])(nil).genericMethod(nil)
 }
 
 -- foo_main.go --

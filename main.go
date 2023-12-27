@@ -1,6 +1,7 @@
 // Copyright (c) 2017, Daniel Martí <mvdan@mvdan.cc>
 // See LICENSE for licensing information
 
+// unparam reports unused function parameters and results in your code.
 package main
 
 import (

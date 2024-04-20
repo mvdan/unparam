@@ -1,0 +1,20 @@
+! exec unparam .
+cmp stdout stdout.golden
+
+-- go.mod --
+module testdata.tld/foo
+
+go 1.18
+-- stdout.golden --
+foo.go:7:37: (*FooType).multImplsMethod - a is unused
+-- foo.go --
+package foo
+
+var DoWork func()
+
+type FooType int
+
+func (f *(FooType)) multImplsMethod(a int) int64 {
+	DoWork()
+	return 3
+}

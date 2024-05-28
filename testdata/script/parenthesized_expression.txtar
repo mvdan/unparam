@@ -7,6 +7,7 @@ module testdata.tld/foo
 go 1.18
 -- stdout.golden --
 foo.go:7:37: (*FooType).multImplsMethod - a is unused
+foo.go:12:44: (*FooType).multImplsMethod2 - a is unused
 -- foo.go --
 package foo
 
@@ -15,6 +16,11 @@ var DoWork func()
 type FooType int
 
 func (f *(FooType)) multImplsMethod(a int) int64 {
+	DoWork()
+	return 3
+}
+
+func (f *((((FooType))))) multImplsMethod2(a int) int64 {
 	DoWork()
 	return 3
 }

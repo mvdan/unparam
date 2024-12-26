@@ -10,9 +10,9 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	os.Exit(testscript.RunMain(m, map[string]func() int{
-		"unparam": main1,
-	}))
+	testscript.Main(m, map[string]func(){
+		"unparam": main,
+	})
 }
 
 func TestScript(t *testing.T) {

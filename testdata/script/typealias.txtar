@@ -1,0 +1,27 @@
+! exec unparam .
+cmp stderr stderr.golden
+cmp stdout stdout.golden
+
+-- stderr.golden --
+-- stdout.golden --
+foo.go:9:20: (Alias).bar - s is unused
+-- go.mod --
+module testdata.tld/foo
+
+go 1.18
+-- foo.go --
+package foo
+
+type A struct {
+	b struct{}
+}
+
+type Alias = A
+
+func (a Alias) bar(s string) {
+	_ = a.b // Needed for bar to not be considered a dummy implementation
+}
+
+func test() {
+	Alias{}.bar("")
+}

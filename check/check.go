@@ -18,6 +18,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 
@@ -153,7 +154,7 @@ func (c *Checker) CheckExportedFuncs(exported bool) {
 	c.exported = exported
 }
 
-func (c *Checker) debug(format string, a ...interface{}) {
+func (c *Checker) debug(format string, a ...any) {
 	if c.debugLog != nil {
 		fmt.Fprintf(c.debugLog, format, a...)
 	}
@@ -388,12 +389,7 @@ func (c *Checker) Check() ([]Issue, error) {
 }
 
 func stringsContains(list []string, elem string) bool {
-	for _, e := range list {
-		if e == elem {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(list, elem)
 }
 
 func (c *Checker) addImplementing(named *types.Named, iface *types.Interface) {
@@ -401,8 +397,8 @@ func (c *Checker) addImplementing(named *types.Named, iface *types.Interface) {
 		return
 	}
 	list := c.typesImplementing[named]
-	for i := 0; i < iface.NumMethods(); i++ {
-		name := iface.Method(i).Name()
+	for method := range iface.Methods() {
+		name := method.Name()
 		if !stringsContains(list, name) {
 			list = append(list, name)
 		}
@@ -456,7 +452,7 @@ func findFunction(freeVars map[*ssa.FreeVar]*ssa.Function, value ssa.Value) *ssa
 }
 
 // addIssue records a newly found unused parameter.
-func (c *Checker) addIssue(fn *ssa.Function, pos token.Pos, format string, args ...interface{}) {
+func (c *Checker) addIssue(fn *ssa.Function, pos token.Pos, format string, args ...any) {
 	c.issues = append(c.issues, Issue{
 		pos:   pos,
 		fname: fn.RelString(fn.Package().Pkg),
@@ -623,7 +619,7 @@ func containsTypeParam(t types.Type) bool {
 		return true
 	case *types.Struct:
 		nf := t.NumFields()
-		for i := 0; i < nf; i++ {
+		for i := range nf {
 			if containsTypeParam(t.Field(i).Type()) {
 				return true
 			}
@@ -632,8 +628,8 @@ func containsTypeParam(t types.Type) bool {
 		return containsTypeParam(t.Elem())
 	case *types.Named:
 		args := t.TypeArgs()
-		for i := 0; i < args.Len(); i++ {
-			if containsTypeParam(args.At(i)) {
+		for t0 := range args.Types() {
+			if containsTypeParam(t0) {
 				return true
 			}
 		}

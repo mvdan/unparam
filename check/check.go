@@ -624,7 +624,7 @@ func containsTypeParam(t types.Type) bool {
 	case *types.Struct:
 		nf := t.NumFields()
 		for i := 0; i < nf; i++ {
-			if containsTypeParam(t.Field(nf).Type()) {
+			if containsTypeParam(t.Field(i).Type()) {
 				return true
 			}
 		}

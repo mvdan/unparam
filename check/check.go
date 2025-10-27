@@ -139,7 +139,7 @@ type Issue struct {
 func (i Issue) Pos() token.Pos  { return i.pos }
 func (i Issue) Message() string { return i.fname + " - " + i.msg }
 
-// Program supplies Checker with the needed *loader.Program.
+// Packages supplies Checker with the loaded packages.
 func (c *Checker) Packages(pkgs []*packages.Package) {
 	c.pkgs = pkgs
 }
@@ -388,10 +388,6 @@ func (c *Checker) Check() ([]Issue, error) {
 	return c.issues, nil
 }
 
-func stringsContains(list []string, elem string) bool {
-	return slices.Contains(list, elem)
-}
-
 func (c *Checker) addImplementing(named *types.Named, iface *types.Interface) {
 	if named == nil || iface == nil {
 		return
@@ -399,7 +395,7 @@ func (c *Checker) addImplementing(named *types.Named, iface *types.Interface) {
 	list := c.typesImplementing[named]
 	for method := range iface.Methods() {
 		name := method.Name()
-		if !stringsContains(list, name) {
+		if !slices.Contains(list, name) {
 			list = append(list, name)
 		}
 	}
@@ -481,7 +477,7 @@ func (c *Checker) checkFunc(fn *ssa.Function, pkg *packages.Package) {
 	}
 	if recv := fn.Signature.Recv(); recv != nil {
 		named := findNamed(recv.Type())
-		if stringsContains(c.typesImplementing[named], fn.Name()) {
+		if slices.Contains(c.typesImplementing[named], fn.Name()) {
 			c.debug("  skip - method required to implement an interface\n")
 			return
 		}

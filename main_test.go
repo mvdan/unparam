@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"os"
 	"path/filepath"
 	"testing"
@@ -15,11 +16,14 @@ func TestMain(m *testing.M) {
 	})
 }
 
+var update = flag.Bool("u", false, "update testscripts")
+
 func TestScript(t *testing.T) {
 	t.Parallel()
 	p := testscript.Params{
 		Dir:                 filepath.Join("testdata", "script"),
 		RequireExplicitExec: true,
+		UpdateScripts:       *update,
 		Setup: func(env *testscript.Env) error {
 			env.Vars = append(env.Vars, "/="+string(os.PathSeparator))
 			return nil

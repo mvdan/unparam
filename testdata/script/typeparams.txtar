@@ -13,8 +13,9 @@ foo.go:69:18: g1a - v is unused
 foo.go:72:22: g2a - v is unused
 foo.go:75:18: g1p - v is unused
 foo.go:78:22: g2p - v is unused
-foo.go:83:17: nonGeneric - v is unused
-foo.go:86:42: (GenericType1[T1]).genericMethod - v is unused
+foo.go:81:23: g1struct - v is unused
+foo.go:86:17: nonGeneric - v is unused
+foo.go:89:42: (GenericType1[T1]).genericMethod - v is unused
 -- go.mod --
 module testdata.tld/foo
 
@@ -98,6 +99,9 @@ func g1p[T1 any](v *GenericType1[T1]) {
 	DoWork()
 }
 func g2p[T1, T2 any](v *GenericType2[T1, T2]) {
+	DoWork()
+}
+func g1struct[T1 any](v struct{f GenericType1[T1]}) {
 	DoWork()
 }
 

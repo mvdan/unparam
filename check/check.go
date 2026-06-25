@@ -610,7 +610,7 @@ resLoop:
 }
 
 func containsTypeParam(t types.Type) bool {
-	switch t := t.(type) {
+	switch t := types.Unalias(t).(type) {
 	case *types.TypeParam, *types.Union:
 		return true
 	case *types.Struct:

@@ -5,10 +5,11 @@ cmp stdout stdout.golden
 -- stderr.golden --
 -- stdout.golden --
 foo.go:9:20: (Alias).bar - s is unused
+foo.go:23:17: use - b is unused
 -- go.mod --
 module testdata.tld/foo
 
-go 1.18
+go 1.24
 -- foo.go --
 package foo
 
@@ -22,6 +23,21 @@ func (a Alias) bar(s string) {
 	_ = a.b // Needed for bar to not be considered a dummy implementation
 }
 
+type Box[T any] struct {
+	V T
+}
+
+// A generic type alias parameter passed by value used to make unparam
+// panic when asking go/types for the size of an unresolved type parameter.
+type GenericAlias[T any] = Box[T]
+
+var DoWork func()
+
+func use[T any](b GenericAlias[T]) {
+	DoWork()
+}
+
 func test() {
 	Alias{}.bar("")
+	use[int](GenericAlias[int]{})
 }

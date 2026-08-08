@@ -172,7 +172,7 @@ func eqlConsts(c1, c2 *ssa.Const) bool {
 	if c1 == nil || c2 == nil {
 		return c1 == c2
 	}
-	if c1.Type() != c2.Type() {
+	if !types.Identical(c1.Type(), c2.Type()) {
 		return false
 	}
 	if c1.Value == nil || c2.Value == nil {

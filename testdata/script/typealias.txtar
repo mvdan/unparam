@@ -6,6 +6,7 @@ cmp stdout stdout.golden
 -- stdout.golden --
 foo.go:9:20: (Alias).bar - s is unused
 foo.go:23:17: use - b is unused
+foo.go:45:14: take - m always receives 7
 -- go.mod --
 module testdata.tld/foo
 
@@ -53,8 +54,8 @@ func aliasErr(n int) (int, ErrAlias) {
 
 type IntAlias = int
 
-// TODO: take should be reported as always receiving 7 in m;
-// the constant converted via IntAlias is treated as a different one.
+// take is reported as always receiving 7 in m even though
+// one of the constants is converted via IntAlias.
 func take(n, m int) {
 	sink += n + m
 }

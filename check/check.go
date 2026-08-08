@@ -100,6 +100,9 @@ func (c *Checker) lines(args ...string) ([]string, error) {
 	if packages.PrintErrors(pkgs) > 0 {
 		return nil, fmt.Errorf("encountered errors")
 	}
+	if len(pkgs) == 0 {
+		return nil, fmt.Errorf("no packages to check")
+	}
 
 	prog, _ := ssautil.Packages(pkgs, 0)
 	prog.Build()

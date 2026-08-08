@@ -540,7 +540,7 @@ resLoop:
 			continue
 		}
 		res := results.At(i)
-		if res.Type() == errorType {
+		if types.Unalias(res.Type()) == errorType {
 			// "error is never used" is less useful, and it's up to
 			// tools like errcheck anyway.
 			continue

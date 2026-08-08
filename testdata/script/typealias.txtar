@@ -6,7 +6,6 @@ cmp stdout stdout.golden
 -- stdout.golden --
 foo.go:9:20: (Alias).bar - s is unused
 foo.go:23:17: use - b is unused
-foo.go:36:28: aliasErr - result 1 (testdata.tld/foo.ErrAlias) is never used
 -- go.mod --
 module testdata.tld/foo
 
@@ -38,8 +37,8 @@ func use[T any](b GenericAlias[T]) {
 	DoWork()
 }
 
-// TODO: an alias of error should be skipped like error itself;
-// aliasErr's second result should not be reported as never used.
+// An alias of error is skipped like error itself;
+// aliasErr's second result must not be reported as never used.
 type ErrAlias = error
 
 var (

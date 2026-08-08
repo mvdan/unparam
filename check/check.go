@@ -113,7 +113,7 @@ func (c *Checker) lines(args ...string) ([]string, error) {
 	prevLine := ""
 	for _, issue := range issues {
 		fpos := prog.Fset.Position(issue.Pos()).String()
-		if strings.HasPrefix(fpos, c.wd) {
+		if strings.HasPrefix(fpos, c.wd+string(filepath.Separator)) {
 			fpos = fpos[len(c.wd)+1:]
 		}
 		line := fmt.Sprintf("%s: %s", fpos, issue.Message())

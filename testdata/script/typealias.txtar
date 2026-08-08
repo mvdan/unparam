@@ -51,10 +51,22 @@ func aliasErr(n int) (int, ErrAlias) {
 	return n, errSink
 }
 
+type IntAlias = int
+
+// TODO: take should be reported as always receiving 7 in m;
+// the constant converted via IntAlias is treated as a different one.
+func take(n, m int) {
+	sink += n + m
+}
+
 func test() {
 	Alias{}.bar("")
 	use[int](GenericAlias[int]{})
 	a, _ := aliasErr(1)
 	b, _ := aliasErr(2)
 	sink = a + b
+	take(1, 7)
+	take(2, 7)
+	take(3, IntAlias(7))
+	take(4, 7)
 }

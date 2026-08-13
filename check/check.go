@@ -429,7 +429,9 @@ func findNamed(typ types.Type) *types.Named {
 	case *types.Pointer:
 		return findNamed(typ.Elem())
 	case *types.Named:
-		return typ
+		// Use the generic origin, so that an instantiation like G[int]
+		// and the receiver type of G's methods map to the same key.
+		return typ.Origin()
 	}
 	return nil
 }

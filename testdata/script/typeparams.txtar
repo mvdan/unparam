@@ -16,7 +16,6 @@ foo.go:78:22: g2p - v is unused
 foo.go:81:23: g1struct - v is unused
 foo.go:86:17: nonGeneric - v is unused
 foo.go:89:42: (GenericType1[T1]).genericMethod - v is unused
-foo.go:108:23: (FooImpl[T]).foo - x is unused
 -- go.mod --
 module testdata.tld/foo
 
@@ -126,9 +125,6 @@ type wantsFoo interface {
 
 type FooImpl[T any] struct{}
 
-// TODO: false positive; foo is required to implement wantsFoo, but the
-// interface conversion records the instantiation FooImpl[int] rather
-// than the generic origin type.
 func (FooImpl[T]) foo(x int) {
 	DoWork()
 }

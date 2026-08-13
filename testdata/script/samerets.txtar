@@ -12,6 +12,8 @@ foo.go:43:28: manyNilError - result 1 (error) is always nil
 foo.go:74:39: doubleReturnNotForwarded - result 1 (error) is always nil
 foo.go:92:29: neverForwarded - result 1 (error) is always nil
 foo.go:99:50: (FooType).neverForwardedPtrMethod - result 1 (error) is always nil
+foo.go:124:41: doubleReturnForwardedDefer - result 1 (error) is always nil
+foo.go:135:33: forwardingDoubleFuncLitsDefer$1 - result 1 (error) is always nil
 -- foo.go --
 package foo
 
@@ -129,6 +131,30 @@ func forwardingDoubleFuncLits(orig []byte) {
 		return data[0], nil
 	}
 	_ = func() (byte, error) {
+		return rc(orig)
+	}
+}
+
+// TODO: the two functions forwarded below are false positives;
+// the defer statements hide the "return fn()" forwarding.
+
+func doubleReturnForwardedDefer() (int, error) {
+	DoWork()
+	return 5, nil
+}
+
+func forwardingDoubleDefer() (int, error) {
+	defer DoWork()
+	return doubleReturnForwardedDefer()
+}
+
+func forwardingDoubleFuncLitsDefer(orig []byte) {
+	rc := func(data []byte) (byte, error) {
+		DoWork()
+		return data[0], nil
+	}
+	_ = func() (byte, error) {
+		defer DoWork()
 		return rc(orig)
 	}
 }

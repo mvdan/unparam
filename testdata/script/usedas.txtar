@@ -5,8 +5,6 @@ cmp stdout stdout.golden
 module testdata.tld/foo
 -- stdout.golden --
 foo.go:9:19: oneUnused - b is unused
-foo.go:228:29: usedAsGoArg - i is unused
-foo.go:237:32: usedAsDeferArg - i is unused
 -- foo.go --
 package foo
 
@@ -234,7 +232,6 @@ func globalParamGo(f func(f FooType, i float32)) {
 	f(9, 10)
 }
 
-// TODO: false positive; go and defer args should count like call args.
 func usedAsGoArg(f FooType, i float32) {
 	DoWork()
 	println(f)

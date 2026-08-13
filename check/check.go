@@ -286,15 +286,14 @@ func (c *Checker) Check() ([]Issue, error) {
 						// fn(someFunc()) fixes params
 						c.paramsRequiredBy[fn] = "forwarded call"
 					}
-				}
-				switch instr := instr.(type) {
-				case *ssa.Call:
-					for _, arg := range instr.Call.Args {
+					for _, arg := range instr.Common().Args {
 						if fn := findFunction(freeVars, arg); fn != nil {
-							// someFunc(fn)
+							// someFunc(fn), also via go or defer
 							c.signRequiredBy[fn] = "call"
 						}
 					}
+				}
+				switch instr := instr.(type) {
 				case *ssa.Phi:
 					for _, val := range instr.Edges {
 						if fn := findFunction(freeVars, val); fn != nil {

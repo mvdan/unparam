@@ -5,6 +5,8 @@ cmp stdout stdout.golden
 module testdata.tld/foo
 -- stdout.golden --
 foo.go:9:19: oneUnused - b is unused
+foo.go:228:29: usedAsGoArg - i is unused
+foo.go:237:32: usedAsDeferArg - i is unused
 -- foo.go --
 package foo
 
@@ -226,4 +228,28 @@ func FuncLitUsedAsReturn(fixedVal int64) func(int64) (int64, error) {
         return func(int64) (int64, error) {
                 return fixedVal, nil
         }
+}
+
+func globalParamGo(f func(f FooType, i float32)) {
+	f(9, 10)
+}
+
+// TODO: false positive; go and defer args should count like call args.
+func usedAsGoArg(f FooType, i float32) {
+	DoWork()
+	println(f)
+}
+
+func globalParamDefer(f func(f FooType, i float64)) {
+	f(11, 12)
+}
+
+func usedAsDeferArg(f FooType, i float64) {
+	DoWork()
+	println(f)
+}
+
+func UsesGoAndDefer() {
+	go globalParamGo(usedAsGoArg)
+	defer globalParamDefer(usedAsDeferArg)
 }

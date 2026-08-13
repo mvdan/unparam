@@ -5,10 +5,6 @@ cmp stdout stdout.golden
 module testdata.tld/foo
 -- stdout.golden --
 foo.go:9:19: oneUnused - b is unused
-foo.go:252:32: usedAsMapValue - i is unused
-foo.go:262:16: init$5 - result 0 (error) is always nil
-foo.go:274:32: usedAsChanSend - i is unused
-foo.go:286:34: usedAsSelectSend - i is unused
 -- foo.go --
 package foo
 
@@ -255,8 +251,6 @@ func UsesGoAndDefer() {
 	defer globalParamDefer(usedAsDeferArg)
 }
 
-// TODO: false positives; funcs stored in maps or sent on channels
-// should have their signatures marked as required.
 var funcsMap = map[string]func(f FooType, i complex64){
 	"someFunc": usedAsMapValue,
 }

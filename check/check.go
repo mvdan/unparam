@@ -332,6 +332,26 @@ func (c *Checker) Check() ([]Issue, error) {
 					if fn := findFunction(freeVars, instr.Val); fn != nil {
 						c.signRequiredBy[fn] = as
 					}
+				case *ssa.MapUpdate:
+					if fn := findFunction(freeVars, instr.Value); fn != nil {
+						// someMap[someKey] = fn
+						c.signRequiredBy[fn] = "map value"
+					}
+				case *ssa.Send:
+					if fn := findFunction(freeVars, instr.X); fn != nil {
+						// someChan <- fn
+						c.signRequiredBy[fn] = "channel send"
+					}
+				case *ssa.Select:
+					for _, state := range instr.States {
+						if state.Dir != types.SendOnly {
+							continue
+						}
+						if fn := findFunction(freeVars, state.Send); fn != nil {
+							// select { case someChan <- fn: }
+							c.signRequiredBy[fn] = "channel send"
+						}
+					}
 				case *ssa.MakeInterface:
 					// someIface(named)
 					iface := instr.Type().Underlying().(*types.Interface)

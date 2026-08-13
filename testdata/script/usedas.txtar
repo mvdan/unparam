@@ -5,6 +5,10 @@ cmp stdout stdout.golden
 module testdata.tld/foo
 -- stdout.golden --
 foo.go:9:19: oneUnused - b is unused
+foo.go:252:32: usedAsMapValue - i is unused
+foo.go:262:16: init$5 - result 0 (error) is always nil
+foo.go:274:32: usedAsChanSend - i is unused
+foo.go:286:34: usedAsSelectSend - i is unused
 -- foo.go --
 package foo
 
@@ -249,4 +253,57 @@ func usedAsDeferArg(f FooType, i float64) {
 func UsesGoAndDefer() {
 	go globalParamGo(usedAsGoArg)
 	defer globalParamDefer(usedAsDeferArg)
+}
+
+// TODO: false positives; funcs stored in maps or sent on channels
+// should have their signatures marked as required.
+var funcsMap = map[string]func(f FooType, i complex64){
+	"someFunc": usedAsMapValue,
+}
+
+func usedAsMapValue(f FooType, i complex64) {
+	DoWork()
+	println(f)
+}
+
+func UsesMapValue() {
+	funcsMap["someFunc"](1, 2)
+}
+
+var cmdMap = map[string]func() error{
+	"cmd": func() error {
+		DoWork()
+		return nil
+	},
+}
+
+func RunCmd(name string) error {
+	return cmdMap[name]()
+}
+
+var funcsChan = make(chan func(f FooType, i complex128), 2)
+
+func usedAsChanSend(f FooType, i complex128) {
+	DoWork()
+	println(f)
+}
+
+func UsesChanSend() {
+	funcsChan <- usedAsChanSend
+	(<-funcsChan)(3, 4)
+}
+
+var funcsChanSel = make(chan func(f FooType, i uintptr), 2)
+
+func usedAsSelectSend(f FooType, i uintptr) {
+	DoWork()
+	println(f)
+}
+
+func UsesSelectSend() {
+	select {
+	case funcsChanSel <- usedAsSelectSend:
+	default:
+	}
+	(<-funcsChanSel)(5, 6)
 }

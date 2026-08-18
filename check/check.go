@@ -233,6 +233,30 @@ func (c *Checker) Check() ([]Issue, error) {
 	}
 	allFuncs := ssautil.AllFunctions(c.prog)
 
+	// ssautil.AllFunctions skips methods of unexported types unless they
+	// are reachable via an interface or an exported type, so we could miss
+	// call sites or entire functions to check. Add all the source-level
+	// funcs and methods from the loaded packages ourselves.
+	// We still want ssautil.AllFunctions for the synthetic wrappers it
+	// finds, such as those for promoted methods called via an interface,
+	// as their bodies record call sites too.
+	var addSrcFunc func(fn *ssa.Function)
+	addSrcFunc = func(fn *ssa.Function) {
+		allFuncs[fn] = true
+		for _, anon := range fn.AnonFuncs {
+			addSrcFunc(anon)
+		}
+	}
+	for _, pkg := range c.pkgs {
+		for _, def := range pkg.TypesInfo.Defs {
+			if def, ok := def.(*types.Func); ok {
+				if fn := c.prog.FuncValue(def); fn != nil {
+					addSrcFunc(fn)
+				}
+			}
+		}
+	}
+
 	// map from *ssa.FreeVar to *ssa.Function, to find function literals
 	// behind closure vars in the simpler scenarios.
 	freeVars := map[*ssa.FreeVar]*ssa.Function{}

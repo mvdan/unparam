@@ -1,0 +1,22 @@
+! exec unparam .
+cmp stdout stdout.golden
+
+# TODO: linknamed should not be reported, as go:linkname
+# fixes its signature.
+
+-- go.mod --
+module testdata.tld/foo
+-- stdout.golden --
+foo.go:7:18: regularFunc - f is unused
+foo.go:10:16: linknamed - f is unused
+-- foo.go --
+package foo
+
+import _ "unsafe"
+
+var DoWork func()
+
+func regularFunc(f int) { DoWork() }
+
+//go:linkname linknamed other/pkg.linknamed
+func linknamed(f int) { DoWork() }

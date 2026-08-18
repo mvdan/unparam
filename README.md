@@ -12,6 +12,7 @@ To minimise false positives, it ignores certain cases such as:
 * Funcs that may satisfy a function signature
 * Funcs that are stubs (empty, only error, immediately return, etc)
 * Funcs that have multiple implementations via build tags
+* Funcs with a `go:linkname` directive
 
 It also reports results that always return the same value, parameters
 that always receive the same value, and results that are never used. In

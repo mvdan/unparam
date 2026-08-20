@@ -1,6 +1,6 @@
 module mvdan.cc/unparam
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/rogpeppe/go-internal v1.16.0

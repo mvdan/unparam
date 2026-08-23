@@ -16,6 +16,8 @@ foo.go:78:22: g2p - v is unused
 foo.go:81:23: g1struct - v is unused
 foo.go:86:17: nonGeneric - v is unused
 foo.go:89:42: (GenericType1[T1]).genericMethod - v is unused
+foo.go:120:11: (*closureHolder[T1]).closureMethod$2 - t1 is unused
+foo.go:127:11: localTypeParam$1 - l is unused
 -- go.mod --
 module testdata.tld/foo
 
@@ -132,6 +134,22 @@ func (FooImpl[T]) foo(x int) {
 func UseFoo() {
 	var w wantsFoo = FooImpl[int]{}
 	w.foo(1)
+}
+
+// a closure isn't generic itself, but its parameters may still use the type
+// parameters of the enclosing func or method
+type closureHolder[T1 any] struct{ t1 T1 }
+
+func (c *closureHolder[T1]) closureMethod() {
+	_ = func(t1 T1) { c.t1 = t1 }
+	_ = func(t1 T1) { DoWork() }
+}
+
+// a type declared within a generic func can contain type parameters
+// without having any type arguments of its own
+func localTypeParam[T1 any]() {
+	type local struct{ t1 T1 }
+	_ = func(l local) { DoWork() }
 }
 
 -- foo_main.go --

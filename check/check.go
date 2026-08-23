@@ -650,8 +650,6 @@ resLoop:
 		c.addIssue(fn, res.Pos(), "result %s is never used", name)
 	}
 
-	fnIsGeneric := fn.TypeParams().Len() > 0
-
 	for i, par := range fn.Params {
 		if paramsBy != "" {
 			continue // we can't change the params
@@ -666,13 +664,9 @@ resLoop:
 		}
 		t := par.Type()
 		// asking for the size of a type param would panic, as it is unknowable
-		if !fnIsGeneric || !containsTypeParam(t) {
-			if stdSizes.Sizeof(par.Type()) == 0 {
-				c.debug("  skip - zero size\n")
-				continue
-			}
-		} else {
-			c.debug("  examine - type parameter\n")
+		if !containsTypeParam(t) && stdSizes.Sizeof(t) == 0 {
+			c.debug("  skip - zero size\n")
+			continue
 		}
 		reason := "is unused"
 		constStr := c.alwaysReceivedConst(callSites, par, i)
@@ -686,6 +680,9 @@ resLoop:
 	}
 }
 
+// containsTypeParam reports whether computing the size of t requires knowing
+// the size of a type parameter. It only follows the types that [types.Sizes]
+// descends into; the rest have a fixed size.
 func containsTypeParam(t types.Type) bool {
 	switch t := types.Unalias(t).(type) {
 	case *types.TypeParam, *types.Union:
@@ -700,12 +697,7 @@ func containsTypeParam(t types.Type) bool {
 	case *types.Array:
 		return containsTypeParam(t.Elem())
 	case *types.Named:
-		args := t.TypeArgs()
-		for t0 := range args.Types() {
-			if containsTypeParam(t0) {
-				return true
-			}
-		}
+		return containsTypeParam(t.Underlying())
 	}
 	return false
 }

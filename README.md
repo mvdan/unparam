@@ -21,3 +21,12 @@ the warnings are useful.
 
 False positives can still occur by design. The aim of the tool is to be
 as precise as possible - if you find any mistakes, file a bug.
+
+### Sponsoring
+
+If this project saves you or your company time, consider
+[sponsoring me on GitHub](https://github.com/sponsors/mvdan).
+Monthly tiers include benefits like your logo on a README,
+prioritized issues, or direct support in your company's chat app.
+One-time tiers offer a call about one of my projects
+or a Go consulting or mentorship session.

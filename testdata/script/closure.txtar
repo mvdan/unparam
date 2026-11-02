@@ -5,7 +5,7 @@ cmp stdout stdout.golden
 module testdata.tld/foo
 -- stdout.golden --
 foo.go:5:19: ClosureUse$1 - v is unused
-foo.go:20:21: NestedClosureCall$1 - result 1 (string) is never used
+foo.go:39:21: NestedClosureIgnored$1 - result 1 (string) is never used
 -- foo.go --
 package foo
 

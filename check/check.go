@@ -279,37 +279,8 @@ func (c *Checker) Check() ([]Issue, error) {
 		}
 	}
 
-	// map from *ssa.FreeVar to *ssa.Function, to find function literals
-	// behind closure vars in the simpler scenarios.
-	freeVars := map[*ssa.FreeVar]*ssa.Function{}
-	for curFunc := range allFuncs {
-		for _, b := range curFunc.Blocks {
-			for _, instr := range b.Instrs {
-				instr, ok := instr.(*ssa.MakeClosure)
-				if !ok {
-					continue
-				}
-				fn := instr.Fn.(*ssa.Function)
-				for i, fv := range fn.FreeVars {
-					binding := instr.Bindings[i]
-					alloc, ok := binding.(*ssa.Alloc)
-					if !ok {
-						continue
-					}
-					for _, ref := range *alloc.Referrers() {
-						store, ok := ref.(*ssa.Store)
-						if !ok {
-							continue
-						}
-						if fn, ok := store.Val.(*ssa.Function); ok {
-							freeVars[fv] = fn
-							break
-						}
-					}
-				}
-			}
-		}
-	}
+	// Find the function literals behind closure vars in the simpler scenarios.
+	freeVars := capturedFuncs(allFuncs)
 
 	c.signRequiredBy = make(map[*ssa.Function]string)
 	c.paramsRequiredBy = make(map[*ssa.Function]string)
@@ -483,8 +454,76 @@ func findNamed(typ types.Type) *types.Named {
 	return nil
 }
 
+// capturedFuncs finds the functions behind func variables captured by closures,
+// keyed by each variable's [ssa.Alloc] and its [ssa.FreeVar] in every closure.
+// A variable is only resolved if its address does not escape and it is only
+// ever assigned the same function.
+func capturedFuncs(allFuncs map[*ssa.Function]bool) map[ssa.Value]*ssa.Function {
+	// Nested closures bind a free var of the enclosing closure.
+	bindings := make(map[*ssa.FreeVar]ssa.Value)
+	for fn := range allFuncs {
+		for _, b := range fn.Blocks {
+			for _, instr := range b.Instrs {
+				instr, ok := instr.(*ssa.MakeClosure)
+				if !ok {
+					continue
+				}
+				for i, fv := range instr.Fn.(*ssa.Function).FreeVars {
+					if ptr, ok := fv.Type().(*types.Pointer); ok {
+						if _, ok := ptr.Elem().Underlying().(*types.Signature); ok {
+							bindings[fv] = instr.Bindings[i]
+						}
+					}
+				}
+			}
+		}
+	}
+	freeVars := make(map[*ssa.Alloc][]ssa.Value)
+	for fv := range bindings {
+		var val ssa.Value = fv
+		for outer, ok := val.(*ssa.FreeVar); ok; outer, ok = val.(*ssa.FreeVar) {
+			val = bindings[outer]
+		}
+		if alloc, ok := val.(*ssa.Alloc); ok {
+			freeVars[alloc] = append(freeVars[alloc], fv)
+		}
+	}
+	funcs := make(map[ssa.Value]*ssa.Function)
+allocs:
+	for alloc, vals := range freeVars {
+		vals = append(vals, alloc)
+		var fn *ssa.Function
+		for _, val := range vals {
+			for _, ref := range *val.Referrers() {
+				switch ref := ref.(type) {
+				case *ssa.UnOp, *ssa.MakeClosure, *ssa.DebugRef:
+					continue // loads, and bindings in nested closures
+				case *ssa.Store:
+					if ref.Addr != val {
+						break
+					}
+					if _, ok := ref.Val.(*ssa.Const); ok {
+						continue // nil
+					}
+					if f, ok := ref.Val.(*ssa.Function); ok && (fn == nil || f == fn) {
+						fn = f
+						continue
+					}
+				}
+				continue allocs // the address escapes, or another func is assigned
+			}
+		}
+		if fn != nil {
+			for _, val := range vals {
+				funcs[val] = fn
+			}
+		}
+	}
+	return funcs
+}
+
 // findFunction returns the function that is behind a value, if any.
-func findFunction(freeVars map[*ssa.FreeVar]*ssa.Function, value ssa.Value) *ssa.Function {
+func findFunction(freeVars map[ssa.Value]*ssa.Function, value ssa.Value) *ssa.Function {
 	switch value := value.(type) {
 	case *ssa.Function:
 		name := value.Name()
@@ -511,9 +550,7 @@ func findFunction(freeVars map[*ssa.FreeVar]*ssa.Function, value ssa.Value) *ssa
 		if value.Op != token.MUL {
 			break
 		}
-		if fv, ok := value.X.(*ssa.FreeVar); ok {
-			return freeVars[fv]
-		}
+		return freeVars[value.X]
 	}
 	return nil
 }
@@ -1010,7 +1047,7 @@ func (c *Checker) multipleImpls(pkg *packages.Package, fn *ssa.Function) bool {
 // arguments were all received via another function call. That is, if a call to
 // function "foo" was of the form "foo(bar())". This often means that the
 // parameters in "foo" are difficult to remove, even if unused.
-func receivesExtractedArgs(freeVars map[*ssa.FreeVar]*ssa.Function, call ssa.CallInstruction) *ssa.Function {
+func receivesExtractedArgs(freeVars map[ssa.Value]*ssa.Function, call ssa.CallInstruction) *ssa.Function {
 	comm := call.Common()
 	callee := findFunction(freeVars, comm.Value)
 	if callee == nil {

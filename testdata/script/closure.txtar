@@ -5,6 +5,7 @@ cmp stdout stdout.golden
 module testdata.tld/foo
 -- stdout.golden --
 foo.go:5:19: ClosureUse$1 - v is unused
+foo.go:20:21: NestedClosureCall$1 - result 1 (string) is never used
 -- foo.go --
 package foo
 
@@ -17,4 +18,69 @@ func ClosureUse() {
 	println(enclosed)
 	setValue(&newValue)
 	println(enclosed)
+}
+
+type T struct{ n int }
+
+func run(f func()) { f() }
+
+// The second result is only used by a call within a nested closure.
+func NestedClosureCall() {
+	get := func() (*T, string) { return &T{n: 1}, "foo" }
+	run(func() {
+		n, _ := get()
+		println(n)
+	})
+	run(func() {
+		n, _ := get()
+		println(n)
+	})
+	run(func() {
+		run(func() {
+			n, s := get()
+			println(n, s)
+		})
+	})
+}
+
+// The second result is never used, by direct or nested calls.
+func NestedClosureIgnored() {
+	get := func() (*T, string) { return &T{n: 1}, "foo" }
+	n, _ := get()
+	println(n)
+	run(func() {
+		run(func() {
+			run(func() {
+				n, _ := get()
+				println(n)
+			})
+		})
+	})
+}
+
+// The second result is only used by a direct call.
+func NestedClosureDirectUse() {
+	get := func() (*T, string) { return &T{n: 1}, "foo" }
+	run(func() { run(func() { n, _ := get(); println(n) }) })
+	run(func() { run(func() { n, _ := get(); println(n) }) })
+	n, s := get()
+	println(n, s)
+}
+
+var Sink func() (*T, string)
+
+// The signature is required by the global.
+func NestedClosureEscapes() {
+	get := func() (*T, string) { return &T{n: 1}, "foo" }
+	run(func() { run(func() { n, _ := get(); println(n) }) })
+	run(func() { run(func() { n, _ := get(); println(n) }) })
+	Sink = get
+}
+
+// A nested closure assigns another func.
+func NestedClosureAssign() {
+	get := func() (*T, string) { return &T{n: 1}, "foo" }
+	run(func() { run(func() { get = func() (*T, string) { return &T{n: 2}, "bar" } }) })
+	run(func() { run(func() { n, _ := get(); println(n) }) })
+	run(func() { run(func() { n, _ := get(); println(n) }) })
 }

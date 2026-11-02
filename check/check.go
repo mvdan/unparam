@@ -333,7 +333,12 @@ func (c *Checker) Check() ([]Issue, error) {
 						}
 					}
 				case *ssa.Store:
-					as := ""
+					fn := findFunction(freeVars, instr.Val)
+					if fn == nil || fn == freeVars[instr.Addr] {
+						// a closure var whose calls we follow
+						continue
+					}
+					as := "pointer" // *somePtr = fn
 					switch instr.Addr.(type) {
 					case *ssa.FieldAddr:
 						// x.someField = fn
@@ -344,12 +349,11 @@ func (c *Checker) Check() ([]Issue, error) {
 					case *ssa.Global:
 						// someGlobal = fn
 						as = "global"
-					default:
-						continue
+					case *ssa.Alloc, *ssa.FreeVar:
+						// someVar = fn
+						as = "local variable"
 					}
-					if fn := findFunction(freeVars, instr.Val); fn != nil {
-						c.signRequiredBy[fn] = as
-					}
+					c.signRequiredBy[fn] = as
 				case *ssa.MapUpdate:
 					if fn := findFunction(freeVars, instr.Value); fn != nil {
 						// someMap[someKey] = fn
@@ -457,7 +461,7 @@ func findNamed(typ types.Type) *types.Named {
 // capturedFuncs finds the functions behind func variables captured by closures,
 // keyed by each variable's [ssa.Alloc] and its [ssa.FreeVar] in every closure.
 // A variable is only resolved if its address does not escape and it is only
-// ever assigned the same function.
+// ever assigned the same function, which may be a copy of another variable.
 func capturedFuncs(allFuncs map[*ssa.Function]bool) map[ssa.Value]*ssa.Function {
 	// Nested closures bind a free var of the enclosing closure.
 	bindings := make(map[*ssa.FreeVar]ssa.Value)
@@ -485,37 +489,47 @@ func capturedFuncs(allFuncs map[*ssa.Function]bool) map[ssa.Value]*ssa.Function 
 			val = bindings[outer]
 		}
 		if alloc, ok := val.(*ssa.Alloc); ok {
+			if freeVars[alloc] == nil {
+				freeVars[alloc] = []ssa.Value{alloc}
+			}
 			freeVars[alloc] = append(freeVars[alloc], fv)
 		}
 	}
 	funcs := make(map[ssa.Value]*ssa.Function)
-allocs:
-	for alloc, vals := range freeVars {
-		vals = append(vals, alloc)
-		var fn *ssa.Function
-		for _, val := range vals {
-			for _, ref := range *val.Referrers() {
-				switch ref := ref.(type) {
-				case *ssa.UnOp, *ssa.MakeClosure, *ssa.DebugRef:
-					continue // loads, and bindings in nested closures
-				case *ssa.Store:
-					if ref.Addr != val {
-						break
-					}
-					if _, ok := ref.Val.(*ssa.Const); ok {
-						continue // nil
-					}
-					if f := findFunction(nil, ref.Val); f != nil && (fn == nil || f == fn) {
-						fn = f
-						continue
-					}
-				}
-				continue allocs // the address escapes, or another func is assigned
+	// Repeat until nothing new is resolved, to follow copies of other vars.
+	for resolved := true; resolved; {
+		resolved = false
+	allocs:
+		for alloc, vals := range freeVars {
+			if funcs[alloc] != nil {
+				continue
 			}
-		}
-		if fn != nil {
+			var fn *ssa.Function
 			for _, val := range vals {
-				funcs[val] = fn
+				for _, ref := range *val.Referrers() {
+					switch ref := ref.(type) {
+					case *ssa.UnOp, *ssa.MakeClosure, *ssa.DebugRef:
+						continue // loads, and bindings in nested closures
+					case *ssa.Store:
+						if ref.Addr != val {
+							break
+						}
+						if _, ok := ref.Val.(*ssa.Const); ok {
+							continue // nil
+						}
+						if f := findFunction(funcs, ref.Val); f != nil && (fn == nil || f == fn) {
+							fn = f
+							continue
+						}
+					}
+					continue allocs // the address escapes, or another func is assigned
+				}
+			}
+			if fn != nil {
+				for _, val := range vals {
+					funcs[val] = fn
+				}
+				resolved = true
 			}
 		}
 	}

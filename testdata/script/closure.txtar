@@ -7,9 +7,7 @@ module testdata.tld/foo
 foo.go:5:19: ClosureUse$1 - v is unused
 foo.go:39:21: NestedClosureIgnored$1 - result 1 (string) is never used
 foo.go:81:21: NestedClosureCapturing$1 - result 1 (string) is never used
-foo.go:98:21: NestedClosureCopied$1 - result 1 (string) is never used
-foo.go:119:14: NestedClosureTwoFuncs$1 - x is unused
-foo.go:121:14: NestedClosureTwoFuncs$2 - x is unused
+foo.go:107:21: NestedClosureCopiedIgnored$1 - result 1 (string) is never used
 -- foo.go --
 package foo
 
@@ -106,7 +104,6 @@ func NestedClosureCapturingUse(x string) {
 }
 
 // The second result is only used by a call through a copy.
-// TODO: reported, as the calls through the copy are missed.
 func NestedClosureCopied() {
 	get := func() (*T, string) { return &T{n: 1}, "foo" }
 	get2 := get
@@ -117,7 +114,6 @@ func NestedClosureCopied() {
 }
 
 // The second result is never used, by calls through the var or its copy.
-// TODO: not reported, as the calls through the copy are missed.
 func NestedClosureCopiedIgnored() {
 	get := func() (*T, string) { return &T{n: 1}, "foo" }
 	get2 := get
@@ -127,7 +123,6 @@ func NestedClosureCopiedIgnored() {
 }
 
 // Both funcs share the variable's signature, so neither can change on its own.
-// TODO: reported, as each func is checked on its own.
 func NestedClosureTwoFuncs(b bool) {
 	get := func(x int) { println("foo") }
 	if b {

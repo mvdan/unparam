@@ -505,7 +505,7 @@ allocs:
 					if _, ok := ref.Val.(*ssa.Const); ok {
 						continue // nil
 					}
-					if f, ok := ref.Val.(*ssa.Function); ok && (fn == nil || f == fn) {
+					if f := findFunction(nil, ref.Val); f != nil && (fn == nil || f == fn) {
 						fn = f
 						continue
 					}

@@ -6,6 +6,7 @@ module testdata.tld/foo
 -- stdout.golden --
 foo.go:5:19: ClosureUse$1 - v is unused
 foo.go:39:21: NestedClosureIgnored$1 - result 1 (string) is never used
+foo.go:81:21: NestedClosureCapturing$1 - result 1 (string) is never used
 -- foo.go --
 package foo
 
@@ -86,7 +87,6 @@ func NestedClosureAssign() {
 }
 
 // The second result is never used, and the func captures a variable.
-// TODO: not reported, as its call sites via the closure var are missed.
 func NestedClosureCapturing(x string) {
 	get := func() (*T, string) { return &T{n: 1}, x }
 	run(func() { run(func() { n, _ := get(); println(n) }) })

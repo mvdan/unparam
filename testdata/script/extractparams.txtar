@@ -9,7 +9,6 @@ foo.go:25:38: (FooType).methodResultAsParam - a is unused
 foo.go:32:29: funcResultsAsParams - b is unused
 foo.go:37:31: funcResultNotAsParams - b is unused
 foo.go:58:26: returnResultsOwn - result 0 (testdata.tld/foo.FooType) is never used
-foo.go:76:48: (FooType).methodValueResultsAsParams - b is unused
 -- foo.go --
 package foo
 
@@ -85,7 +84,6 @@ func ReturnResultsCalls() {
 	_, Sink = returnResultsDirectly()
 }
 
-// TODO: reported, as the args of a call via a method value are misread.
 func (f FooType) methodValueResultsAsParams(a, b FooType) FooType {
 	DoWork()
 	return a + 1

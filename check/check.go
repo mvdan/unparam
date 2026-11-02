@@ -777,36 +777,28 @@ func (c *Checker) alwaysReceivedConst(callSites []ssa.CallInstruction, par *ssa.
 		// times, hence a potential false positive.
 		return ""
 	}
-	if ast.IsExported(par.Parent().Name()) {
+	fn := par.Parent()
+	if ast.IsExported(fn.Name()) {
 		// we might not have all call sites for an exported func
 		return ""
 	}
-	var seen *ssa.Const
-	origPos := pos
-	if par.Parent().Signature.Recv() != nil {
-		// go/ast's CallExpr.Args does not include the receiver, but
-		// go/ssa's equivalent does.
-		origPos--
+	if fn.Signature.Recv() != nil {
+		pos-- // paramArgs and go/ast's CallExpr.Args exclude the receiver
 	}
+	var seen *ssa.Const
 	seenOrig := ""
 	for _, site := range callSites {
 		call := site.Common()
-		if pos >= len(call.Args) {
-			// TODO: investigate? Weird crash in
-			// internal/x/net/http2/hpack/hpack_test.go, where we
-			// roughly do: "at := d.mustAt; at(3)".
-			return ""
-		}
-		cnst := constValue(call.Args[pos])
+		cnst := constValue(paramArgs(call, fn)[pos])
 		if cnst == nil {
 			return "" // not a constant
 		}
 		origArg := ""
 		origCall := c.callByPos[call.Pos()]
-		if origPos >= len(origCall.Args) {
+		if pos >= len(origCall.Args) {
 			// variadic parameter that wasn't given
 		} else {
-			origArg = nodeStr(origCall.Args[origPos])
+			origArg = nodeStr(origCall.Args[pos])
 		}
 		if seen == nil {
 			seen = cnst // first constant
@@ -1057,6 +1049,15 @@ func (c *Checker) multipleImpls(pkg *packages.Package, fn *ssa.Function) bool {
 	return count[name] > 1
 }
 
+// paramArgs returns the arguments of a call to fn, excluding any receiver,
+// which a call via a bound method value like "f := x.Method" does not have.
+func paramArgs(call *ssa.CallCommon, fn *ssa.Function) []ssa.Value {
+	if fn.Signature.Recv() != nil && len(call.Args) > fn.Signature.Params().Len() {
+		return call.Args[1:]
+	}
+	return call.Args
+}
+
 // receivesExtractedArgs returns the statically called function, if its multiple
 // arguments were all received via another function call. That is, if a call to
 // function "foo" was of the form "foo(bar())". This often means that the
@@ -1071,12 +1072,7 @@ func receivesExtractedArgs(freeVars map[ssa.Value]*ssa.Function, call ssa.CallIn
 		// there aren't multiple parameters
 		return nil
 	}
-	args := comm.Args
-	if callee.Signature.Recv() != nil {
-		// skip the receiver argument
-		args = args[1:]
-	}
-	if c := callExtract(call, args); c != nil {
+	if c := callExtract(call, paramArgs(comm, callee)); c != nil {
 		return callee
 	}
 	return nil

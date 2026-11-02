@@ -5,6 +5,7 @@ cmp stdout stdout.golden
 module testdata.tld/foo
 -- stdout.golden --
 foo.go:9:19: oneUnused - b is unused
+foo.go:298:31: usedAsPointer - i is unused
 -- foo.go --
 package foo
 
@@ -300,4 +301,20 @@ func UsesSelectSend() {
 	default:
 	}
 	(<-funcsChanSel)(5, 6)
+}
+
+// TODO: reported, as the store via a pointer is not seen.
+func usedAsPointer(f FooType, i *int) {
+	DoWork()
+	println(f)
+}
+
+func storeViaPointer(p *func(f FooType, i *int)) {
+	*p = usedAsPointer
+}
+
+func UsesPointer() {
+	var fn func(f FooType, i *int)
+	storeViaPointer(&fn)
+	fn(7, nil)
 }

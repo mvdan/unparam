@@ -84,3 +84,20 @@ func NestedClosureAssign() {
 	run(func() { run(func() { n, _ := get(); println(n) }) })
 	run(func() { run(func() { n, _ := get(); println(n) }) })
 }
+
+// The second result is never used, and the func captures a variable.
+// TODO: not reported, as its call sites via the closure var are missed.
+func NestedClosureCapturing(x string) {
+	get := func() (*T, string) { return &T{n: 1}, x }
+	run(func() { run(func() { n, _ := get(); println(n) }) })
+	run(func() { run(func() { n, _ := get(); println(n) }) })
+}
+
+// The second result is only used by a call within a nested closure, and the
+// func captures a variable.
+func NestedClosureCapturingUse(x string) {
+	get := func() (*T, string) { return &T{n: 1}, x }
+	run(func() { run(func() { n, _ := get(); println(n) }) })
+	run(func() { run(func() { n, _ := get(); println(n) }) })
+	run(func() { run(func() { n, s := get(); println(n, s) }) })
+}
